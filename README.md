@@ -14,18 +14,19 @@ El objetivo del trabajo es analizar hasta qué punto los *Large Language Models*
 
 ## 🗂️ Estructura del repositorio
 
+```text
 TFM_LLM_Cybersecurity/
-├── prompts/ # Prompts y entradas por caso (casoN_prompt.txt, casoN_input.txt/.conf)
-├── responses/ # Salidas de los modelos (GPT-4 y Mistral 7B)
-│ ├── gpt4/
-│ └── mistral/
-├── metrics/ # Tablas LaTeX por caso y metrics_master.csv (resumen)
-├── scripts/ # Scripts de automatización (ejecución y métricas)
-│ ├── gpt4_run_and_metrics.py
-│ ├── ollama_run_and_metrics.sh
-│ └── run_all_metrics.py
-├── README.md # Este archivo
-└── TFM/ # Manuscrito en LaTeX y bibliografía
+├── prompts/             # Prompts y entradas por caso (casoN_prompt.txt, casoN_input.txt/.conf)
+├── responses/           # Salidas de los modelos (GPT-4 y Mistral 7B)
+│   ├── gpt4/
+│   └── mistral/
+├── metrics/             # Tablas LaTeX por caso y metrics_master.csv (resumen)
+├── scripts/             # Scripts de automatización (ejecución y métricas)
+│   ├── gpt4_run_and_metrics.py
+│   ├── ollama_run_and_metrics.sh
+│   └── run_all_metrics.py
+├── README.md            # Este archivo
+└── TFM/                 # Manuscrito en LaTeX y bibliografía
 
 ## ⚙️ Requisitos
 
