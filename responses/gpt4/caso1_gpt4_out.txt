@@ -1,0 +1,56 @@
+Análisis del handshake TLS 1.3 (RFC 8446) — Informe de auditoría
+================================================================
+
+1) Explicación de mensajes y propósito criptográfico (referencias aproximadas a RFC 8446: “Handshake Protocol” y “Key Schedule”)
+-------------------------------------------------------------------------------------------------------------
+• 1) ClientHello — El cliente anuncia versiones soportadas (incl. TLS 1.3), suites AEAD, grupos/curvas y extensiones (p. ej., key_share, supported_versions, signature_algorithms, ALPN, SNI). Si usa PSK/0‑RTT, puede incluir pre_shared_key y psk_key_exchange_modes. Propósito: proponer parámetros y, si aplica, enviar su parte efímera para (EC)DHE. (≈ secciones de Handshake / extensiones)
+• 2) ServerHello — El servidor elige versión TLS 1.3, suite y grupo; devuelve su key_share. Con el secreto (EC)DHE y (opcional) PSK, ambas partes derivan los “handshake traffic secrets” mediante HKDF y el transcript hash. (≈ Handshake; Key Schedule)
+• 3) Handshake cifrado — A partir de aquí, los mensajes de handshake se protegen con claves de tráfico de handshake (confidencialidad e integridad). En TLS 1.3, casi todo el handshake va cifrado tras ServerHello, reduciendo la exposición de metadatos. (≈ Handshake; Record Layer)
+• 4) EncryptedExtensions — El servidor confirma parámetros adicionales negociados (p. ej., ALPN, early_data aceptado o no, políticas SNI). (≈ Handshake / EncryptedExtensions)
+• 5) Certificate — El servidor envía su cadena de certificados y extensiones pertinentes (OCSP stapling/SCTs si procede). (≈ Handshake / Certificate)
+• 6) CertificateVerify — El servidor firma el transcript del handshake con su clave privada según el algoritmo acordado (p. ej., rsa_pss_rsae_sha256, ecdsa_secp256r1_sha256), probando posesión de la clave y ligando la identidad al canal. (≈ Handshake / CertificateVerify)
+• 7) Finished — Cada parte envía un MAC (HMAC) sobre el transcript con finished_key, confirmando la integridad del handshake y las claves derivadas; transición a “application traffic secrets”. (≈ Handshake / Finished)
+• 8) (Opcional) Autenticación del cliente — El servidor puede enviar CertificateRequest; el cliente responde con Certificate, CertificateVerify y Finished análogos. (≈ Handshake / Client Auth)
+• 9) Datos de aplicación — Tráfico protegido con “application traffic secrets” (AEAD). Pueden darse rekeyings y autenticación post‑handshake. (≈ Application Data; Key Schedule)
+
+2) Contraste con TLS 1.2 (qué cambió y por qué)
+-----------------------------------------------
+• Intercambio de claves: Se elimina RSA key exchange y DH estático; (EC)DHE efímero se hace obligatorio para PFS. Motivo: reducir compromisos a largo plazo y ataques de retro‑decriptado.
+• Cifrado temprano del handshake: En TLS 1.2 gran parte del handshake iba en claro; en TLS 1.3 se cifra tras ServerHello, mitigando metadatos expuestos y ciertas manipulaciones.
+• Latencia: Handshake 1‑RTT por defecto; soporte 0‑RTT (con riesgos de repetición). Menos “round‑trips” que en TLS 1.2.
+• Suites: En TLS 1.3 las suites ya no codifican el método de intercambio ni PRF; solo AEAD+hash (p. ej., TLS_AES_128_GCM_SHA256, TLS_CHACHA20_POLY1305_SHA256). Se retiran suites obsoletas (CBC, RC4, MD5/SHA‑1).
+• Key Schedule: Derivación explícita por niveles (early | handshake | application secrets) con HKDF y transcript hash.
+• Renegociación: Se elimina la renegociación insegura de TLS 1.2; TLS 1.3 define mecanismos post‑handshake bien acotados.
+• Protección contra downgrade: Señal de “downgrade” en ServerHello Random impide forzar versiones/ciphers más bajos.
+
+3) Errores comunes de implementación/configuración en la práctica
+-----------------------------------------------------------------
+• Habilitar 0‑RTT sin controles anti‑repetición a nivel de aplicación/back‑end (riesgo de replay).
+• Soportar versiones heredadas (TLS 1.0/1.1) o TLS 1.2 con suites débiles por compatibilidad.
+• Cadena de certificados incompleta, extensiones de uso de clave inapropiadas, u OCSP stapling ausente.
+• Grupos/curvas mal configurados (p. ej., permitir secp192r1) o desalineados con signature_algorithms.
+• Falta de validación estricta de hostname/SAN y políticas ALPN (mismatch entre SNI/ALPN y certificado).
+• Desactivar PFS al permitir ciphers no efímeros en contextos mixtos o intermedios.
+• Mala rotación de claves/secretos y falta de auditoría de transcript en terminadores TLS.
+
+4) Checklist de auditoría (PCAP + servidor)
+-------------------------------------------
+A) Capturas PCAP (TLS 1.3):
+  ▸ Verificar supported_versions en ClientHello y versión seleccionada TLS 1.3 en ServerHello.
+  ▸ Confirmar extensión key_share en ambos lados y grupo seguro (x25519, secp256r1, etc.).
+  ▸ Revisar suite elegida: TLS_AES_128_GCM_SHA256 / TLS_AES_256_GCM_SHA384 / TLS_CHACHA20_POLY1305_SHA256.
+  ▸ Comprobar presencia/ausencia de early_data (0‑RTT) y su política.
+  ▸ Validar Certificate, algoritmo de firma en CertificateVerify y MAC Finished sobre el transcript.
+  ▸ Buscar la señal anti‑downgrade en ServerHello Random.
+B) Configuración de servidor (Apache/Nginx/terminador TLS):
+  ▸ Forzar TLS 1.3 (y, si se permite 1.2, restringirlo a AEAD modernas y ECDHE fuerte).
+  ▸ Limitar suites a las de TLS 1.3 (AES‑GCM/ChaCha20‑Poly1305); prohibir SHA‑1/CBC/RC4.
+  ▸ Definir grupos fuertes: x25519, secp256r1; deshabilitar grupos inseguros.
+  ▸ Cadena de certificados completa; OCSP stapling y SCTs si procede; verificación estricta de hostname/SAN.
+  ▸ Revisar ALPN/SNI coherentes con los virtual hosts y con HTTP/2.
+  ▸ Políticas de 0‑RTT deshabilitadas o con mitigación robusta de replay en la aplicación.
+  ▸ Pruebas periódicas con testssl.sh / sslscan y revisión de reportes automatizados.
+
+Notas sobre referencias
+-----------------------
+• Referencias a la RFC 8446 indicadas de forma aproximada (capítulos “Handshake Protocol” y “Key Schedule”), dado que la estructura y numeración fina varían por edición/formato.

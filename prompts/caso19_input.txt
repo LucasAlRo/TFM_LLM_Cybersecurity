@@ -1,0 +1,8 @@
+# Configuración base (Apache HTTPS)
+ServerName corp.local
+SSLProtocol all
+SSLCipherSuite ALL:!aNULL
+SSLHonorCipherOrder off
+SSLCompression on
+SSLUseStapling off
+Protocols http/1.1

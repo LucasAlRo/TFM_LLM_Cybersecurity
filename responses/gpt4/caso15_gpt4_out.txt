@@ -1,0 +1,81 @@
+Checklist de auditoría TLS para servidores web — Informe de auditoría
+=====================================================================
+
+1) Lista de verificación priorizada (alto / medio / bajo)
+---------------------------------------------------------
+
+**Prioridad ALTA**
+- Versiones TLS soportadas
+  • Evidencia: listado de protocolos aceptados por el servidor.
+  • Comando: `testssl.sh -p https://example.org`
+  • Referencia: NIST SP 800-52r2; Mozilla “modern/intermediate”.
+
+- Suites de cifrado activas (TLS 1.2 y 1.3)
+  • Evidencia: suites negociadas y orden de preferencia.
+  • Comando: `sslscan --no-failed example.org:443`
+  • Referencia: OWASP TLS Cheat Sheet.
+
+- Certificados (issuer, SAN, EKU, fechas)
+  • Evidencia: certificado y cadena en PEM; fechas notBefore/notAfter.
+  • Comando: `openssl s_client -connect example.org:443 -servername example.org -showcerts </dev/null`
+  • Referencia: NIST SP 800-52r2.
+
+**Prioridad MEDIA**
+- ALPN (protocolos de aplicación)
+  • Evidencia: negociación de HTTP/1.1, HTTP/2, HTTP/3.
+  • Comando: `testssl.sh -S https://example.org`
+  • Referencia: Mozilla SSL Config Generator.
+
+- OCSP stapling
+  • Evidencia: estado OCSP en handshake.
+  • Comando: `testssl.sh -S https://example.org`
+  • Referencia: NIST SP 800-52r2.
+
+- HSTS (Strict-Transport-Security)
+  • Evidencia: cabecera HTTP presente.
+  • Comando: `curl -I https://example.org | grep Strict-Transport-Security`
+  • Referencia: OWASP TLS Cheat Sheet.
+
+- Grupos ECDH
+  • Evidencia: curvas usadas en handshakes.
+  • Comando: `testssl.sh -E https://example.org`
+  • Referencia: Mozilla SSL Config Generator.
+
+**Prioridad BAJA**
+- Session tickets
+  • Evidencia: si están activos y política de rotación.
+  • Comando: `testssl.sh -t https://example.org`
+  • Referencia: NIST SP 800-52r2.
+
+- Early Data (0-RTT en TLS 1.3)
+  • Evidencia: si el servidor acepta early data.
+  • Comando: `testssl.sh -f https://example.org`
+  • Referencia: OWASP TLS Cheat Sheet.
+
+- Logs del servidor
+  • Evidencia: errores de handshake, caducidad de certificados, caídas de protocolos.
+  • Herramienta: `journalctl -u nginx` o `apachectl -S`.
+  • Referencia: CIS Benchmarks (operaciones).
+
+- Pruebas externas
+  • Evidencia: resultados de SSL Labs y observaciones externas.
+  • Herramienta: `ssllabs-scan --grade example.org`.
+  • Referencia: Mozilla, OWASP.
+
+2) Versión breve (para runbook, 1 página)
+-----------------------------------------
+**Checklist rápida TLS (servidores web corporativos)**
+
+✔ Protocolos TLS ≥1.2 (ideal: 1.3).  
+✔ Suites modernas: AES-GCM, ChaCha20; sin RC4/3DES.  
+✔ Certificados válidos (issuer, fechas, SAN, EKU).  
+✔ ALPN correcto (HTTP/2, HTTP/3 si aplica).  
+✔ OCSP stapling activo.  
+✔ HSTS habilitado en cabeceras.  
+✔ Grupos ECDH modernos (X25519/secp384r1).  
+✔ Tickets off o con rotación segura.  
+✔ Early data deshabilitado (salvo análisis de riesgo).  
+✔ Logs revisados (errores de handshake, caducidad).  
+✔ Escaneo externo con SSL Labs (objetivo A+).
+
+Referencias: NIST SP 800-52r2; Mozilla SSL Config Generator; OWASP TLS Cheat Sheet.

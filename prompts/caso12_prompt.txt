@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Analiza el extracto de SSL Labs.
+
+Tareas:
+1) Explica por qué la calificación es B y qué acciones la elevarían a A+.
+2) Evalúa el riesgo de 'ROBOT possibly vulnerable' y pasos para descartarlo/mitigarlo.
+3) Propón configuración concreta para habilitar HSTS y OCSP stapling y revisar soporte RSA key exchange.
+4) Revisa suites/curvas y su alineación con guías (Mozilla, NIST).
+5) Sugiere pruebas de verificación posteriores.
+
+Responde con viñetas y una lista de cambios concretos.

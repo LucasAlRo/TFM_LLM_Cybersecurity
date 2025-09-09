@@ -1,0 +1,63 @@
+Simulación de ataque de downgrade en negociación TLS — Informe de auditoría
+===========================================================================
+
+1) Cómo se materializa el downgrade y defensas disponibles
+---------------------------------------------------------
+• Mecanismo del ataque
+  – El atacante provoca fallos de handshake (inyecta RST/timeout o manipula campos) para forzar al cliente a reintentar con
+    una versión inferior (fallback). Si el cliente acepta automáticamente el fallback y el servidor (o el MITM) negocia
+    versiones/suites antiguas, se reduce el nivel de seguridad efectivo.
+  – Si al bajar de versión el cliente habilita suites heredadas (EXPORT, RC4, 3DES, CBC con SHA‑1), reaparecen vulnerabilidades
+    conocidas (FREAK, Logjam, POODLE, BEAST, RC4‑biases).
+• Defensas normativas
+  – TLS 1.3 “downgrade sentinel”: el servidor que soporta 1.3 incluye un patrón especial en ServerHello.Random al negociar 1.2/1.1,
+    que permite al cliente detectar downgrades artificiales.
+  – TLS_FALLBACK_SCSV (para handshakes ≤ TLS 1.2): el cliente que reintenta con una versión inferior anuncia esta “cifra de señal”;
+    un servidor correcto aborta si soportaba una versión más alta, evitando el downgrade.
+  – Políticas de fallback estrictas: deshabilitar el fallback automático o permitirlo sólo en listas de compatibilidad muy acotadas
+    y sin activar suites obsoletas al bajar de versión.
+
+2) Riesgos de permitir fallback automático y soportar suites/versión obsoletas
+------------------------------------------------------------------------------
+• Exposición a ataques históricos: POODLE (SSLv3), BEAST (TLS 1.0 CBC), FREAK/DHE_EXPORT (EXPORT), RC4‑biases.
+• Pérdida de PFS o degradación criptográfica (DHE débil, 3DES).
+• Calificaciones bajas en auditorías externas (SSL Labs) y no conformidad con guías (NIST SP 800‑52r2, Mozilla, OWASP).
+• Superficie de ataque ampliada y mayor complejidad operativa por “ramas” de compatibilidad.
+
+3) Políticas de negociación seguras (cliente/servidor)
+------------------------------------------------------
+• Versiones
+  – Fijar \\textbf{mínimo TLS 1.2} (mejor \\textbf{TLS 1.3}) y deshabilitar SSLv3/TLS 1.0/1.1.
+  – Desactivar fallback automático; si es imprescindible, restringir por “allowlist” de destinos legacy y sin activar suites débiles.
+• Cifrados
+  – AEAD modernas solamente: TLS\_AES\_128\_GCM\_SHA256, TLS\_AES\_256\_GCM\_SHA384, TLS\_CHACHA20\_POLY1305\_SHA256.
+  – ECDHE obligatorio; prohibir RC4/3DES/CBC+SHA‑1 y todo EXPORT.
+• Señales/controles de downgrade
+  – En clientes ≤ TLS 1.2: enviar TLS\_FALLBACK\_SCSV al reintentar; abortar si el servidor indica soporte superior.
+  – En clientes 1.3: verificar el “downgrade sentinel” en ServerHello.Random cuando el servidor seleccione 1.2/1.1.
+• Operativa
+  – Telemetría: métricas de handshakes negociados por versión/cipher; alarmas ante caídas súbitas de 1.3→1.2.
+  – Documentar excepciones de compatibilidad y revisarlas periódicamente.
+
+4) Pruebas y señales en PCAP/logs para detectar downgrade
+---------------------------------------------------------
+• PCAP
+  – ClientHello con supported\_versions que incluye TLS 1.3 pero ServerHello selecciona 1.2/1.1: comprobar presencia del
+    “downgrade sentinel” en ServerHello.Random.
+  – Ausencia de sentinel + caída de versión → sospecha de downgrade forzado.
+  – Cipher suites negociadas: verificar que no aparezcan EXPORT/RC4/3DES; confirmar ECDHE+AEAD.
+• testssl.sh / sslscan
+```bash
+testssl.sh -p -S --color 0 https://example.com      # versiones y suites; avisos de downgrade/obsoletos
+sslscan --no-failed example.com:443                  # listar suites negociables (evitar EXPORT/RC4/3DES)
+```
+• Logs de TLS/OpenSSL/NSS
+  – Advertencias por TLS\_FALLBACK\_SCSV o detección de downgrade en clientes/terminadores.
+  – Contadores de handshakes fallidos previos al éxito con versión inferior.
+
+5) Referencias (aproximadas)
+----------------------------
+• RFC 8446 (TLS 1.3) — Downgrade protection; ServerHello.Random marker; negociación de versiones.
+• NIST SP 800‑52r2 — Selección de versiones y suites permitidas.
+• Mozilla SSL Config Generator — Listas recomendadas de versiones/ciphers.
+• OWASP TLS Cheat Sheet — Buenas prácticas y anti‑patrones.

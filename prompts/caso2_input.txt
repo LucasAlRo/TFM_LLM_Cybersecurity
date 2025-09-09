@@ -1,0 +1,9 @@
+# Extensiones TLS 1.3 — 0-RTT (early data) y ALPN (Application-Layer Protocol Negotiation)
+0-RTT (early data):
+- Permite enviar datos de aplicación en la "conexión" inicial usando claves derivadas de estado previo (tickets).
+- Riesgo: NO ofrece protección contra repetición (replay) por diseño; requiere mitigaciones a nivel de aplicación/servidor.
+- Casos de uso: idempotentes (GET seguros), no para operaciones sensibles.
+
+ALPN:
+- Negocia el protocolo de aplicación (ej. h2, http/1.1, h3/QUIC en su variante).
+- Impacta en rendimiento y compatibilidad; debe alinearse con ciphers y versiones soportadas.

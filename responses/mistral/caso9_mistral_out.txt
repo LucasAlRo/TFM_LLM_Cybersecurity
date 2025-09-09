@@ -1,0 +1,32 @@
+IPsec (strongSwan) — Resumen operativo
+======================================
+
+1) Parámetros débiles
+---------------------
+• IKE con SHA-1 y MODP1024 es antiguo y menos seguro.
+• ESP con SHA-1 debería sustituirse por opciones modernas.
+
+2) Recomendaciones de suites
+----------------------------
+• IKE: usar AES-GCM con PRF SHA-256/384 y ECDH (ecp256/384) o MODP alto (3072).
+• ESP: preferir AES-GCM con PFS (ecp256/384 o modp3072).
+
+3) Autenticación
+----------------
+• Mejor certificados X.509 que PSK compartidos. Si se usa PSK, que sea largo y único por par.
+
+4) Rekey y operación
+--------------------
+• Establecer tiempos de vida razonables (p. ej., IKE 8h, ESP 1h) y reauth.
+• Mantener DPD activo y monitorizar rekeys.
+
+5) Ejemplo básico
+-----------------
+```ini
+ike=aes256gcm16-prfsha384-ecp384!
+esp=aes256gcm16-ecp384!
+```
+
+6) Referencias
+--------------
+• Consultar RFC 8247, NIST SP 800-77/131A y guías del proveedor.

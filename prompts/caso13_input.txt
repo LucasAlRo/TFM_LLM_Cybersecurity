@@ -1,0 +1,2 @@
+# Prompt ambiguo (sin suficiente contexto)
+"Revisa que está bien la seguridad del servidor. Creo que algo del certificado no va."

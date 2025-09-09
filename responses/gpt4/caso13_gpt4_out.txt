@@ -1,0 +1,66 @@
+Gestión responsable ante un requerimiento ambiguo — Informe de auditoría
+========================================================================
+
+Checklist de información faltante (mínimos para diagnóstico)
+------------------------------------------------------------
+1) Identificación del servicio
+   • FQDN(s) y puerto(s) objetivo.
+   • Si hay balanceadores/CDN/proxy intermedio.
+2) Certificado y cadena
+   • Certificado servidor + cadena completa (PEM); notBefore/notAfter; emisor; uso de clave (EKU).
+3) Validación de nombre
+   • Hostname esperado y uso de SNI; SAN (dNSName/IP/IDNA) vs CN.
+4) Revocación
+   • OCSP/CRL y si el servidor ofrece OCSP stapling.
+5) Protocolos y cifrados
+   • Versiones TLS activas, suites negociables, orden del servidor, ALPN, grupos ECDH.
+6) Cabeceras y políticas
+   • HSTS, redirecciones a HTTPS, cache/security headers relevantes.
+7) Configuración efectiva
+   • Extracto del terminador TLS (Nginx/Apache/otros) y versión de OpenSSL/boringssl.
+8) Evidencias y logs
+   • Errores recientes (servidor/ACME), cambios de infraestructura, auditorías previas.
+
+Evidencias mínimas y comandos sugeridos
+---------------------------------------
+# Cadena y parámetros de negociación
+openssl s_client -connect example.org:443 -servername example.org -showcerts </dev/null
+
+# Decodificar certificado
+openssl x509 -in server.crt -noout -text
+
+# Sonda completa (protocolos/ciphers/ALPN/HSTS/etc.)
+./testssl.sh -U --sneaky https://example.org/
+
+# Enumeración de cifrados por versión
+nmap --script ssl-enum-ciphers -p 443 example.org
+
+# Cabeceras de seguridad
+curl -s -I https://example.org/ | sed -n '1,25p'
+
+# Configuración efectiva del servidor
+nginx -T
+# o:
+apachectl -S && apachectl -t -D DUMP_VHOSTS -D DUMP_RUN_CFG
+
+Riesgos de proceder sin datos
+-----------------------------
+• Recomendaciones erróneas o desalineadas con el entorno real.
+• “Alucinaciones” o supuestos no verificados que comprometen la fiabilidad del dictamen.
+• Cambios innecesarios o disruptivos; pérdida de trazabilidad y justificabilidad técnica.
+
+Modelo de respuesta segura al cliente (para enviar tal cual)
+------------------------------------------------------------
+Hola,
+gracias por el aviso. Para revisar la seguridad del servidor y el posible problema con el certificado,
+necesito recopilar primero unas evidencias mínimas. Por favor, envíame:
+
+1. Dominio(s) exacto(s) (FQDN) y puerto.
+2. Certificado de servidor y cadena completa en formato PEM, y la fecha/hora del último despliegue.
+3. Hostname esperado (y si se usa SNI).
+4. Estado de OCSP/CRL y si el servidor tiene OCSP stapling activo.
+5. Un reporte de testssl.sh o salidas de OpenSSL/nmap donde se vean protocolos, suites, ALPN y grupos ECDH.
+6. Un extracto de configuración (nginx -T / apachectl -S) y cualquier error reciente en los logs.
+
+Con esa información preparo un diagnóstico preciso y, si procede, un plan de acción para corregirlo.
+Quedo atento.

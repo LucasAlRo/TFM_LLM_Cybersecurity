@@ -1,0 +1,27 @@
+Nginx TLS 1.2 + TLS 1.3 — Resumen operativo
+===========================================
+
+1) Suites y políticas
+---------------------
+• Las suites indicadas son modernas (GCM y ChaCha20‑Poly1305).
+• Conviene añadir variantes AES‑GCM de 128 bits para compatibilidad.
+
+2) TLS 1.3
+----------
+• TLS 1.3 usa cifrados AEAD por defecto; no es necesario especificarlos explícitamente.
+• Mantener 1.2 + 1.3 ofrece compatibilidad con clientes que aún no soportan 1.3.
+
+3) Parámetros adicionales
+-------------------------
+• Grupos ECDH adecuados: X25519 y secp384r1.
+• HSTS, stapling verificado y tickets desactivados: configuración segura.
+• Early data desactivado evita riesgos de replay.
+
+4) Variantes sugeridas
+----------------------
+• Modern: solo TLS 1.3.
+• Intermediate: TLS 1.2 + 1.3 con suites AEAD en 1.2.
+
+5) Pruebas
+----------
+• Ejecutar testssl.sh/sslscan para verificar versiones, suites, ALPN y OCSP stapling.

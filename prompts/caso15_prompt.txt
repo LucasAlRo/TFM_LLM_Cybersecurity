@@ -1,0 +1,9 @@
+Eres auditor de seguridad. Genera una checklist de auditoría TLS completa y práctica.
+
+Tareas:
+1) Lista de verificación priorizada (alto/medio/bajo) con items accionables.
+2) Para cada ítem, explica qué evidencia recolectar y el comando/herramienta sugerida (testssl.sh, openssl, sslscan, curl, logs).
+3) Incluye referencias a guías (NIST SP 800-52r2, Mozilla, OWASP) para trazabilidad.
+4) Redacta versión breve (1 página) para anexar al runbook del equipo.
+
+Responde con secciones claras y listas marcadas.

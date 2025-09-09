@@ -1,0 +1,19 @@
+Validación con herramientas externas — Resumen
+==============================================
+
+• Comparar lo que dice el modelo con testssl.sh y sslscan.
+• Revisar certificados con openssl y, si es posible, ver el informe de SSL Labs.
+• Si hay diferencias, volver a probar.
+
+Flujo básico
+------------
+LLM → ejecutar testssl.sh/sslscan → revisar resultados → ajustar conclusiones.
+
+Checklist breve
+---------------
+- Ejecutar testssl.sh y sslscan.
+- Verificar certificado con openssl.
+- Consultar SSL Labs.
+- Anotar diferencias principales.
+
+(Borrador resumido; sin criterios detallados ni tabla de consistencia.)

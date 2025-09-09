@@ -1,0 +1,81 @@
+Comparación entre TLS, SSH e IPsec — Informe académico
+======================================================
+
+Introducción
+------------
+Este documento compara **TLS**, **SSH** e **IPsec** desde una perspectiva técnica y operativa, cubriendo
+capa de operación, usos, autenticación, intercambio de claves, cifrado, gestión de sesiones, amenazas
+y errores habituales de configuración. Se incluyen fortalezas/limitaciones y una tabla comparativa.
+
+1) Capas, ámbitos de uso y amenazas comunes
+-------------------------------------------
+• **TLS** (capa de transporte sobre TCP; también QUIC/TLS a nivel de transporte criptográfico):
+  – Usos típicos: HTTPS, SMTP/IMAPS/POP3S, gRPC, MQTT sobre TLS.
+  – Amenazas: *downgrade* (SSLv3/TLS 1.0/1.1), suites obsoletas (RC4/3DES/CBC+SHA‑1), validación deficiente de certificados,
+    falta de HSTS/OCSP stapling, configuraciones de tickets sin rotación.
+• **SSH** (capa de aplicación):
+  – Usos típicos: administración remota, *túneles* y *port forwarding*, SCP/SFTP, orquestación.
+  – Amenazas: inicio de sesión como *root*, contraseñas débiles, algoritmos obsoletos (DSA, RC4, CBC antiguos), KEX viejos (group1).
+• **IPsec** (capa de red; protege IP): 
+  – Usos típicos: VPN *site‑to‑site* y *remote access*; segmentación entre redes.
+  – Amenazas: grupos DH débiles (MODP1024), SHA‑1, PSK débiles/compartidos, desalineación de propuestas IKE/ESP.
+
+2) Autenticación, intercambio de claves, cifrado y gestión de sesiones
+----------------------------------------------------------------------
+• **Autenticación**
+  – TLS: servidor con certificados X.509 (cliente opcional por mTLS).
+  – SSH: *host keys* para servidor; usuarios por clave pública, contraseña o MFA.
+  – IPsec: IKEv2 con PSK, certificados X.509 o EAP (usuario/portal).
+• **Intercambio de claves**
+  – TLS 1.3: (EC)DHE efímero obligatorio; TLS 1.2: preferente ECDHE (RSA KX obsoleto).
+  – SSH: `curve25519-sha256`/ECDH y DH de grupos altos (group14/16/18).
+  – IPsec (IKEv2): DH/ECDH (ecp256/384 o MODP≥2048/3072).
+• **Cifrado de canal**
+  – TLS 1.3: sólo AEAD modernas (AES‑GCM, ChaCha20‑Poly1305). TLS 1.2: AEAD recomendadas; evitar CBC/RC4.
+  – SSH: `chacha20‑poly1305@openssh.com`, `aes*-ctr`, `aes*-gcm` (según versión).
+  – IPsec (ESP): AES‑GCM / ChaCha20‑Poly1305; legado: AES‑CBC + HMAC (evitar si es posible). AH aporta integridad sin cifrado.
+• **Gestión de sesiones**
+  – TLS: *session resumption* (tickets/PSK), 0‑RTT opcional (análisis de *replay*).
+  – SSH: *multiplexing* de canales y *rekeying* periódico.
+  – IPsec: *Security Associations* (IKE_SA/CHILD_SA) con *lifetimes* por tiempo/tráfico; PFS en rekeys.
+
+3) Errores de configuración típicos e impacto
+---------------------------------------------
+• TLS: activar TLS 1.0/1.1, permitir RC4/3DES/CBC+SHA‑1, no validar hostname/SAN, no activar stapling/HSTS, tickets sin rotación →
+  exposición a BEAST/POODLE/ROBOT, *downgrade*, pérdida de integridad y mala calificación externa.
+• SSH: `PermitRootLogin yes`, `PasswordAuthentication yes`, CBC/RC4, `diffie-hellman-group1-sha1`, `PubkeyAuthentication no` →
+  mayor superficie de ataque (fuerza bruta, *credential stuffing*, KEX débiles).
+• IPsec: `ike=*sha1*modp1024`, `esp=*sha1*`, PSK compartidos, ausencia de PFS/reauth, *lifetimes* mal dimensionados →
+  confidencialidad/integridad reducidas y fallos de interoperabilidad/estabilidad.
+
+4) Fortalezas y limitaciones
+----------------------------
+• TLS: **+** ubicuidad, aceleración HW, ecosistema maduro; **−** gestión PKI/OCSP/HSTS y compatibilidad heredada.
+• SSH: **+** simplicidad operativa, *tunneling* flexible; **−** alto riesgo si se permite root/contraseñas, *hardening* desigual de clientes.
+• IPsec: **+** transparencia a IP, escalable para VPN; **−** complejidad de propuestas IKE/ESP y diagnóstico más difícil.
+
+5) Tabla comparativa
+--------------------
+| Aspecto                  | TLS                                       | SSH                                           | IPsec                                               |
+|--------------------------|-------------------------------------------|-----------------------------------------------|----------------------------------------------------|
+| **Capa**                 | Transporte (TCP) / QUIC                   | Aplicación                                    | Red (IP)                                           |
+| **Usos**                 | HTTPS, correo, APIs                       | Admin remota, SFTP/SCP, túneles               | VPN *site‑to‑site* y *remote access*               |
+| **Autenticación**        | Certificados X.509 (mTLS opcional)        | *Host key*; usuario por clave/contraseña/MFA  | PSK, certificados X.509, EAP                       |
+| **Intercambio de claves**| (EC)DHE (TLS 1.3) / ECDHE (1.2)           | curve25519/ECDH/DH grupos altos               | IKEv2 (DH/ECDH; MODP≥2048 o ecp256/384)            |
+| **Cifrado**              | AEAD: AES‑GCM, ChaCha20‑Poly1305          | chacha20‑poly1305, aes‑ctr/gcm                | ESP: AES‑GCM/ChaCha20; (legado: AES‑CBC+HMAC)      |
+| **Sesiones**             | Resumption (tickets/PSK), 0‑RTT opcional  | Multiplex y *rekey* periódico                 | SA por tiempo/tráfico; PFS en rekey                |
+| **Errores típicos**      | TLS 1.0/1.1, RC4/3DES, CBC+SHA‑1, sin HSTS| Root login, password auth, KEX viejos         | MODP1024/SHA‑1, PSK débiles, sin PFS               |
+| **Fortalezas**           | Ubiquidad, rendimiento                    | Flexibilidad y control fino                   | Transparencia y escalabilidad de red               |
+| **Limitaciones**         | Gestión PKI/compatibilidad heredada       | Riesgo si credenciales débiles                | Complejidad/configuración e interoperabilidad      |
+
+6) Referencias orientativas
+---------------------------
+• TLS 1.3 (RFC 8446); SSH (RFC 4251–4254); IKEv2 (RFC 7296); ESP/AH (RFC 4303/4302).  
+• Guías de *hardening*: NIST SP 800‑52r2 (TLS), Mozilla SSL Config, OWASP TLS Cheat Sheet; CIS Benchmarks (SSH).
+
+Resumen ejecutivo
+-----------------
+TLS asegura aplicaciones en Internet con AEAD y PKI; SSH habilita administración y túneles con
+claves públicas; IPsec protege redes completas mediante IKEv2+ESP. Su elección depende del plano
+de protección (aplicación/transporte vs red), los requisitos de interoperabilidad y la complejidad
+operativa que el equipo puede asumir.

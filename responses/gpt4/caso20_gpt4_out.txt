@@ -1,0 +1,96 @@
+Validación cruzada de respuestas LLM con herramientas externas — Informe de auditoría
+====================================================================================
+
+Objetivo
+--------
+Contrastar de forma **reproducible** lo que afirma el LLM frente a evidencias obtenidas con `testssl.sh`,
+`sslscan`, `openssl s_client` y un **informe independiente** (Qualys SSL Labs). Se busca reducir falsos
+positivos/negativos y aumentar la trazabilidad del dictamen.
+
+1) Evidencias y comandos sugeridos (por categoría)
+--------------------------------------------------
+• **Protocolos y suites (TLS 1.2/1.3)**
+  - `testssl.sh -p https://HOST`  → versiones soportadas
+  - `sslscan --no-failed HOST:443` → suites negociables por versión y preferencia
+  - `nmap -sV --script ssl-enum-ciphers -p 443 HOST` (alternativa/confirmación)
+• **Certificados y cadena**
+  - `openssl s_client -connect HOST:443 -servername HOST -showcerts </dev/null`
+  - `openssl x509 -in server.crt -noout -text` (si dispones del PEM) → issuer, SAN, EKU, notBefore/notAfter
+• **ALPN, grupos ECDH, compresión, tickets**
+  - `testssl.sh -S -E -t https://HOST` → ALPN (h2/h3), curvas X25519/secp*, tickets y compresión
+• **OCSP stapling y cabeceras HSTS**
+  - `testssl.sh -S https://HOST`  → stapling (on/verify)
+  - `curl -I https://HOST | sed -n '1,25p'` → presencia de `Strict-Transport-Security`
+• **Informe independiente de terceros**
+  - Qualys SSL Labs (interfaz web / API) → calificación global, hallazgos adicionales
+
+2) Flujo de validación cruzada (diagrama de flujo textual)
+----------------------------------------------------------
+[ LLM: respuesta inicial ] 
+   └─► (1) **Extraer hipótesis verificables**: versiones mín./máx. TLS, suites permitidas, ALPN, HSTS, stapling, curvas, tickets
+          └─► (2) **Plan de pruebas**: asignar comandos y criterios de éxito por hipótesis
+                 └─► (3) **Ejecución local**: testssl.sh / sslscan / openssl (guardar salidas crudas)
+                        └─► (4) **Informe tercero**: lanzar/adjuntar reporte de SSL Labs
+                               └─► (5) **Normalizar evidencias**: parsear resultados a una tabla común (por categoría)
+                                      └─► (6) **Comparar**: CONSISTE / DIVERGE / NO EVIDENCIA
+                                             └─► (7) **Resolver divergencias**: repetir pruebas, revisar cachés/stapling, confirmar SNI/ALPN
+                                                    └─► (8) **Dictamen final**: conclusiones basadas en evidencias + anexo reproducible
+                                                           └─► (9) **Archivado**: versiones de herramientas, comandos, salidas y fecha
+
+3) Criterios de comparación (cómo decidir CONSISTE/DIVERGE)
+------------------------------------------------------------
+• **Protocolos**: el conjunto reportado por LLM debe estar incluido en la salida `testssl.sh -p` (y sin mencionar versiones obsoletas).
+• **Suites**: no deben aparecer RC4/3DES/CBC si el LLM las descarta. Comparar por versión (TLS 1.2 vs 1.3).
+• **ALPN**: presencia de `h2`/`h3` debe coincidir con `testssl.sh -S` y con SSL Labs.
+• **HSTS**: cabecera debe verse con `curl -I` y ser coherente con SSL Labs.
+• **OCSP stapling**: estado *on/verify* debe coincidir entre `testssl.sh -S` y SSL Labs.
+• **Curvas/Grupos**: X25519/secp384r1 visibles en `testssl.sh -E` si el LLM los afirma.
+• **Tickets/compresión**: `-t` y banderas de compresión deben alinear con lo afirmado por el LLM.
+
+Tabla de consistencia (plantilla)
+---------------------------------
+| Categoría     | Afirmación LLM                       | Evidencia externa                 | Resultado      | Nota |
+|---------------|--------------------------------------|-----------------------------------|----------------|------|
+| Protocolos    | “Sólo TLS 1.2 y 1.3”                 | testssl.sh -p                     | CONSISTE       |      |
+| Suites        | “Sin RC4/3DES; AEAD modernas”        | sslscan / ssl-enum-ciphers        | CONSISTE       |      |
+| ALPN          | “h2 habilitado”                      | testssl.sh -S / SSL Labs          | DIVERGE        | Revisar h2 en vhost |
+| HSTS          | “HSTS con preload”                   | curl -I / SSL Labs                | NO EVIDENCIA   | Cabecera ausente |
+| Stapling      | “OCSP stapling on+verify”            | testssl.sh -S / SSL Labs          | CONSISTE       |      |
+
+4) Checklist de validación cruzada (lista accionable)
+------------------------------------------------------
+- [ ] Extraer hipótesis verificables de la respuesta del LLM (listar todas).
+- [ ] Preparar comandos específicos por hipótesis (testssl.sh/sslscan/openssl/curl).
+- [ ] Ejecutar pruebas y **guardar salidas crudas** (archivos `.out` o `.json`).
+- [ ] Obtener reporte de SSL Labs y adjuntarlo (PDF/URL/JSON).
+- [ ] Rellenar **tabla de consistencia** por categoría.
+- [ ] Investigar divergencias (repetir con SNI/ALPN correctos, limpiar caches, probar desde otra red).
+- [ ] Emitir dictamen final basado en evidencia; adjuntar todas las pruebas.
+- [ ] Archivar: versión de herramientas (`testssl.sh --version`, `openssl version -a`, `sslscan --version`), fechas, host probado, commit/hash.
+
+5) Beneficios de reproducibilidad y reducción de falsos positivos
+-----------------------------------------------------------------
+• **Reproducibilidad**: cualquier revisor puede ejecutar los **mismos comandos** y obtener trazas idénticas; facilita auditorías y *peer review*.
+• **Menos falsos positivos**: la salida del LLM se contrasta con medidas objetivas; se documentan las condiciones (SNI, ALPN, IP, fecha, versión).
+• **Transparencia**: el informe final incluye **evidencia verificable**, aumentando la confianza del lector y la trazabilidad del dictamen.
+
+6) Sugerencia de automatización mínima (opcional)
+-------------------------------------------------
+```bash
+HOST=$1
+mkdir -p evidence/$HOST && cd evidence/$HOST
+testssl.sh -p -S -E -t https://$HOST | tee testssl.out
+sslscan --no-failed $HOST:443 | tee sslscan.out
+openssl s_client -connect $HOST:443 -servername $HOST -showcerts </dev/null 2>&1 | tee s_client.out
+curl -I https://$HOST | tee headers.out
+echo "Record versions:" > versions.txt
+{ testssl.sh --version || true; } >> versions.txt
+{ openssl version -a || true; } >> versions.txt
+{ sslscan --version || true; } >> versions.txt
+```
+
+Conclusión
+----------
+Validar sistemáticamente lo que “dice” el LLM con herramientas externas mejora la **calidad** y la
+**defendibilidad** del informe. Este flujo garantiza que las recomendaciones finales estén ancladas en
+hechos observables y repetibles.

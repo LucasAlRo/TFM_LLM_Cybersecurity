@@ -1,0 +1,27 @@
+Verificación de certificados y hostname en cliente TLS 1.3 — Resumen
+====================================================================
+
+1) Fallos principales
+---------------------
+• No se comprueba el nombre del servidor (hostname) frente al certificado.
+• No se revisan fechas ni algunos parámetros básicos del certificado.
+
+2) Correcciones sugeridas
+-------------------------
+• Verificar el hostname usando los datos del certificado.
+• Asegurar que el certificado no esté caducado y que use algoritmos actuales.
+• Usar el almacén de confianza del sistema y rechazar certificados no válidos.
+
+3) Riesgos
+----------
+• Posibles ataques de intermediario (MITM) y suplantación del servidor.
+
+4) Checklist mínima
+-------------------
+• Comparar hostname con el certificado.
+• Comprobar fechas y algoritmos.
+• Probar la conexión con herramientas de diagnóstico y revisar logs.
+
+Notas
+-----
+• Consultar la documentación de TLS 1.3 y las guías del proveedor para más detalles.

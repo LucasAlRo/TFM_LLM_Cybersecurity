@@ -1,0 +1,10 @@
+Handshake TLS 1.3 — Explicación breve
+=====================================
+
+El cliente envía un ClientHello con versiones y cifrados soportados. El servidor responde con
+ServerHello, elige la suite y aporta parámetros de (EC)DHE. Se realiza el intercambio de claves para
+derivar secretos, el servidor presenta su certificado y se verifica. Tras los mensajes Finished, el canal
+pasa a usarse con cifrados AEAD. TLS 1.3 reduce latencia (1‑RTT) y ofrece 0‑RTT opcional.
+
+Beneficios: confidencialidad e integridad del tráfico. Compatibilidad con HTTP/2/3 mediante ALPN.
+(Explicación técnica resumida; no contiene analogías ni conclusión divulgativa.)

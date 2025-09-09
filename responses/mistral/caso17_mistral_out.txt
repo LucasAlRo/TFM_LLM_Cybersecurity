@@ -1,0 +1,17 @@
+Comparación TLS vs SSH vs IPsec — Resumen
+=========================================
+
+• TLS se usa para proteger servicios como HTTPS y correo. Suele trabajar con certificados y cifrados modernos.
+• SSH sirve para administración remota y transferencia de ficheros; permite usar claves públicas o contraseñas.
+• IPsec protege redes a nivel IP y se utiliza para VPNs.
+
+Diferencias clave
+-----------------
+• Capa: TLS (transporte), SSH (aplicación), IPsec (red).
+• Autenticación: TLS con certificados; SSH con claves/contraseñas; IPsec con PSK/certificados/EAP.
+• Cifrado: TLS e IPsec recomiendan AEAD; SSH suele usar chacha20-poly1305 o AES-CTR.
+
+Notas
+-----
+• Evitar versiones y algoritmos antiguos en todos los casos.
+• Ajustar la configuración a las guías modernas.

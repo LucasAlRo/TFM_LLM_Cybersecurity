@@ -1,0 +1,9 @@
+Eres auditor de seguridad. Evalúa cómo validar respuestas de LLM con herramientas externas.
+
+Tareas:
+1) Explica qué comandos/evidencias usar para verificar lo dicho por el modelo.
+2) Propón un flujo de validación cruzada (LLM → testssl.sh → informes).
+3) Explica beneficios de reproducibilidad y reducción de falsos positivos.
+4) Redacta checklist de validación cruzada.
+
+Responde con viñetas + diagrama de flujo textual.

@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Analiza el siguiente resumen del handshake de TLS 1.3 conforme a RFC 8446.
+
+Tareas:
+1) Explica cada mensaje y su propósito criptográfico (claves, autenticación, integridad).
+2) Contrasta con TLS 1.2 (qué cambió y por qué).
+3) Identifica errores comunes de implementación/configuración que ves en la práctica.
+4) Propón una checklist para auditar capturas (PCAP) y configuraciones de servidor (Apache/Nginx).
+5) Cuando cites la RFC, indica la sección aproximada (si no estás seguro, dilo explícitamente).
+
+Responde de forma clara, técnica y estructurada (viñetas).

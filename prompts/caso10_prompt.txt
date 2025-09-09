@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Analiza esta configuración SSH (sshd_config) insegura.
+
+Tareas:
+1) Enumera y explica cada debilidad (root login, passwords, ciphers CBC/RC4, MACs débiles, KEX antiguos).
+2) Propón una configuración endurecida (solo claves, root prohibido, algoritmos modernos).
+3) Comenta impacto operativo y compatibilidad con clientes antiguos.
+4) Sugiere pruebas (ssh-audit, nmap scripts) y qué señales revisar en logs.
+5) Referencia guías (CIS Benchmarks, Mozilla SSH, NIST) cuando proceda.
+
+Responde con viñetas y un bloque de configuración corregido.

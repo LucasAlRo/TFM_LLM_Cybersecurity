@@ -1,0 +1,5 @@
+# Protocolos criptográficos clave: TLS, SSH, IPsec
+
+TLS: capa de transporte, Internet, handshake con certificados, AEAD.
+SSH: administración remota segura, autenticación clave pública, túnel cifrado.
+IPsec: VPNs, capa red, IKEv2 negociación, ESP/AH.

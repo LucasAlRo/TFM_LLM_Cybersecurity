@@ -1,0 +1,31 @@
+Configuración TLS en Apache — Resumen operativo
+===============================================
+
+1) Observaciones generales
+--------------------------
+• El perfil moderno es más seguro al usar protocolos actuales y suites recomendadas.
+• El perfil heredado habilita opciones antiguas que conviene desactivar.
+
+2) Puntos a mejorar
+-------------------
+• Desactivar versiones antiguas de TLS y usar suites modernas.
+• Apagar compresión para evitar problemas.
+• Activar stapling OCSP y revisar tickets de sesión.
+• Considerar cabeceras HTTP como HSTS para reforzar el uso de HTTPS.
+
+3) Propuesta básica de corrección
+---------------------------------
+```apache
+SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1
+SSLCipherSuite TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256
+SSLHonorCipherOrder on
+SSLCompression off
+SSLUseStapling on
+SSLSessionTickets off
+Protocols h2 http/1.1
+```
+
+4) Pruebas sugeridas
+--------------------
+• Ejecutar testssl.sh o sslscan para comprobar versiones y cifrados.
+• Verificar que no haya compresión y que ALPN funcione bien.

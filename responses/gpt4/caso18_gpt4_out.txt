@@ -1,0 +1,32 @@
+El candado que se crea al saludar: así empieza una conexión segura (TLS 1.3)
+============================================================================
+
+Imagina que tu navegador y el servidor son dos personas que quieren hablar en privado. Antes de
+empezar, acuerdan un candado nuevo y una llave que sólo ellos conocerán. Ese acuerdo inicial es el
+“handshake” de TLS 1.3.
+
+1) La metáfora, en breve
+------------------------
+• Cliente (tu navegador): “Hola, quiero hablar contigo. Estos son los candados y trucos de seguridad que sé usar.”
+• Servidor (la web): “Perfecto. De todo eso, usemos este candado fuerte. Aquí tienes mi tarjeta de identidad.”
+• Ambos fabrican una **llave secreta única** para esta conversación y, en cuanto la tienen, **cierran la puerta**: desde ahí todo va cifrado.
+
+2) Paso a paso, sin jerga
+-------------------------
+1. Saludo inicial (ClientHello): el navegador dice qué versiones y “candados” soporta y propone cómo hablar más rápido (HTTP/2, HTTP/3).
+2. Respuesta (ServerHello): el servidor elige un candado moderno y comparte una pieza pública para fabricar la llave (no revela la llave).
+3. Fabricación de la llave: con esas piezas públicas, **cada uno crea la misma llave secreta** sin enviarla por la red (magia matemática).
+4. Identidad del servidor (certificado): el servidor presenta su “DNI digital”. El navegador comprueba que no está caducado, quién lo emitió
+   y que el nombre de la web coincide. Si algo falla, se corta la conversación.
+5. Cierre del apretón (Finished): ambos confirman que todo cuadra y, a partir de aquí, **todos los mensajes viajan cifrados y firmados**.
+6. Extras útiles: se puede reusar la confianza para no “saludar” completo cada vez (reanudación), y existe un modo rápido (0‑RTT) que sólo
+   conviene usar para operaciones seguras y repetibles.
+
+3) ¿Por qué te importa?
+-----------------------
+Porque cuando entras a tu banco, correo o tienda online, TLS 1.3 evita que un tercero lea o cambie lo que envías. Es como hablar en una
+sala privada con un candado nuevo en cada visita: si alguien escucha desde fuera, sólo oye ruido. Además, usar candados modernos hace
+la conversación **más segura y más rápida**.
+
+Idea clave para quedarse: **TLS 1.3 crea una llave única por sesión, comprueba la identidad del sitio y protege cada mensaje**. Tú navegas
+tranquilo; la web permanece íntegra; tus datos, a salvo.

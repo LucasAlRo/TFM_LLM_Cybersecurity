@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Compara TLS, SSH e IPsec.
+
+Tareas:
+1) Explica diferencias en capas, usos y amenazas comunes.
+2) Contrasta autenticación, intercambio de claves, cifrado y gestión de sesiones.
+3) Señala errores de configuración típicos y su impacto.
+4) Resume fortalezas y limitaciones de cada uno.
+5) Redacta una tabla comparativa.
+
+Responde con texto académico + tabla.

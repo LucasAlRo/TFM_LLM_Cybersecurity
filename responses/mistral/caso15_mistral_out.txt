@@ -1,0 +1,10 @@
+Checklist TLS — Resumen
+=======================
+
+• Verificar que el servidor usa certificados válidos.  
+• Confirmar que los protocolos TLS son modernos.  
+• Revisar suites de cifrado y que no haya algoritmos débiles.  
+• Comprobar soporte a cabeceras como HSTS.  
+• Revisar configuración de OCSP y tickets.  
+
+(No incluye priorización clara, comandos concretos ni referencias normativas.)

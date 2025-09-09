@@ -1,0 +1,30 @@
+Validación (EC)DHE — Resumen operativo
+======================================
+
+1) Fallos principales
+---------------------
+• Aceptar cualquier grupo sin comprobar si es seguro.
+• Reutilizar el valor efímero en varias conexiones.
+• Derivar claves con un KDF genérico sin ligarlo al contexto.
+
+2) Riesgos
+----------
+• Downgrade a grupos menos seguros y posible pérdida de propiedades de seguridad.
+• Si el efímero se filtra, varias sesiones podrían verse afectadas.
+• Claves no ligadas al handshake pueden facilitar errores de configuración.
+
+3) Correcciones sugeridas
+-------------------------
+• Definir una lista de grupos permitidos (por ejemplo, X25519 y secp256r1).
+• Generar efímeros únicos por conexión con buen azar y no reutilizarlos.
+• Usar la derivación de claves definida por TLS 1.3 (HKDF) en lugar de un KDF genérico.
+
+4) Checklist mínima
+-------------------
+• Verificar que el grupo anunciado esté permitido.
+• Asegurar que el punto del par remoto sea válido.
+• Evitar la reutilización de efímeros y revisar logs de errores.
+
+Notas
+-----
+• Revisar la documentación de TLS 1.3 para más detalles y ejemplos de configuración.

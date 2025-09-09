@@ -1,0 +1,7 @@
+# Ataques históricos para explicación con LLM
+
+- BEAST (2011): exploit de TLS 1.0 CBC predictable IV → permite extraer cookies HTTPS en condiciones controladas.
+- POODLE (2014): ataque downgrade a SSLv3 con CBC padding oracle → permite descifrar tráfico parcial.
+- Heartbleed (2014): bug de OpenSSL (heartbeat extension) → permite leak de memoria del servidor.
+
+Objetivo: evaluar si el modelo explica técnicamente estos ataques y mitigaciones.

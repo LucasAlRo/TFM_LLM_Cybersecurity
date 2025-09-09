@@ -1,0 +1,112 @@
+Validación en el intercambio (EC)DHE — Informe de auditoría
+===========================================================
+
+1) Fallos detectados y explicación (referencias aproximadas a RFC 8446: Key Exchange; Key Schedule)
+--------------------------------------------------------------------------------------------------
+• F1 — Aceptación de grupos inseguros/no permitidos
+  - El código acepta cualquier 'group' ofertado sin compararlo con una lista explícita de grupos aprobados.
+  - Impacto: posibilidad de downgrade a grupos débiles o no estandarizados; pérdida de PFS/seguridad efectiva.
+
+• F2 — Punto público 'server_pub' sin validar
+  - No se comprueba que (x, y) satisfaga la ecuación de la curva (Weierstrass) ni que no sea el punto en el infinito.
+  - En X25519/X448, no se realizan comprobaciones mínimas (p. ej., rechazo/all-zero check para puntos de orden bajo).
+  - Impacto: ataques de curva inválida (invalid curve) y confinamiento a subgrupos pequeños.
+
+• F3 — Sin controles de orden pequeño / punto neutro
+  - No hay cofactor clearing ni verificación de que el resultado de la multiplicación escalar no caiga en un subgrupo pequeño.
+  - Impacto: revelación parcial del secreto, claves nulas o predecibles, posibilidad de extraer bits del privado.
+
+• F4 — Reutilización de secreto efímero (“nonce”/scalar) en múltiples conexiones
+  - El efímero debe ser único por sesión. Reutilizarlo incrementa la correlación entre sesiones; si se compromete ese efímero,
+    se pierden todas las sesiones asociadas (pérdida de PFS).
+  - Impacto: trazabilidad entre sesiones, amplificación de daños ante fuga puntual del secreto efímero.
+
+• F5 — Derivación KDF sin el transcript hash ni etiquetas de TLS 1.3
+  - Se usa KDF(shared || "context") en lugar del flujo HKDF-Extract/Expand con etiquetas y transcript hash definidos por TLS 1.3.
+  - Impacto: claves desvinculadas del contexto del handshake; debilitamiento frente a ataques de relectura/colisión de contexto.
+
+
+2) Mapeo de fallos → riesgos prácticos
+--------------------------------------
+• F1 → Downgrade a grupo débil/no aprobado; exposición a ataques conocidos; incumplimiento de política criptográfica.
+• F2/F3 → Ataques de curva inválida y small-subgroup: generación de shared secrets nulos o de baja entropía; potencial exfiltración
+  de información sobre la clave privada.
+• F4 → Pérdida de PFS multi-sesión y correlación entre conexiones; si el efímero se filtra una vez, todas las sesiones afectadas
+  quedan comprometidas.
+• F5 → Claves de aplicación no ligadas al transcript: riesgo de key misbinding, replays del contexto y degradación de garantías
+  formales del protocolo.
+• Adicional (KCI) → Validaciones débiles pueden favorecer escenarios de Key Compromise Impersonation en ciertas pilas si se combinan
+  con otros errores de autenticación.
+
+
+3) Correcciones alineadas con TLS 1.3 (RFC 8446: Key Schedule; Diffie-Hellman; Named Groups)
+--------------------------------------------------------------------------------------------
+• Lista blanca de grupos (según política/estándar):
+  - Curvas modernas: X25519 (recomendada), secp256r1; opcional secp384r1. Evitar curvas marginales/legacy.
+• Validación de punto público ('server_pub'):
+  - Weierstrass: verificar que (x, y) ∈ curva, no infinito; multiplicación escalar en tiempo constante; cofactor clearing si aplica.
+  - X25519/X448: aplicar reglas de RFC 7748 (clamping) y comprobar que el resultado de la multiplicación no sea todo‑cero (all‑zero check).
+• Derivación de claves conforme TLS 1.3:
+  - Usar HKDF‑Extract(shared, salt=early_secret/psk...) y HKDF‑Expand con etiquetas (“derived”, “handshake traffic”, “application traffic”)
+    y transcript hash.
+  - El secreto ECDHE alimenta el Key Schedule estándar (early → handshake → application secrets).
+• Efímeros y aleatoriedad:
+  - Generar efímeros de alta entropía por sesión (CSPRNG); prohibir reutilización; borrar en memoria tras uso.
+• Verificación de key_share/grupo del peer:
+  - Aceptar únicamente grupos anunciados/permitidos; rechazar key_share incompatibles.
+• Seguridad de implementación:
+  - Operaciones constantes (sin canales laterales); validación estricta de entradas; límites de tamaño/estructura en puntos y parámetros.
+
+
+4) Pseudocódigo corregido (ilustrativo)
+---------------------------------------
+```python
+def derive_shared_secret(client_priv, server_pub, group, transcript_hash, early_secret):
+    # 1) Lista blanca de grupos
+    allowed = ["x25519", "secp256r1", "secp384r1"]
+    if group not in allowed:
+        raise Fail("unsupported_group")
+
+    # 2) Validación de punto público
+    if group == "x25519":
+        # Multiplicación escalar (constante) y all-zero check
+        shared = x25519_scalar_mult(client_priv, server_pub)
+        if is_all_zero(shared):
+            raise Fail("invalid_peer_public")
+    else:
+        if not on_curve(server_pub, group) or is_infinity(server_pub):
+            raise Fail("invalid_peer_public")
+        # cofactor clearing si aplica; mult escalar constante
+        shared = ec_scalar_mult(client_priv, server_pub, group)
+        if in_small_subgroup(shared, group):
+            raise Fail("small_subgroup")
+
+    # 3) Key Schedule TLS 1.3 (HKDF + transcript hash)
+    handshake_secret = HKDF_Extract(salt=early_secret, IKM=shared)
+    client_hs = HKDF_Expand_Label(handshake_secret, "c hs traffic", transcript_hash, Nk)
+    server_hs = HKDF_Expand_Label(handshake_secret, "s hs traffic", transcript_hash, Nk)
+    # ... actualizar transcript y derivar application secrets
+
+    return client_hs, server_hs
+```
+
+
+5) Checklist de validación (EC)DHE
+----------------------------------
+• Grupos permitidos explícitos (X25519, secp256r1, opcional secp384r1); rechazar el resto.
+• Validación del punto público:
+  – Weierstrass: pertenencia a la curva, no-infinito; límites de tamaño; cofactor clearing si aplica.
+  – X25519/X448: all-zero check tras la multiplicación; seguir RFC 7748.
+• Efímeros únicos por sesión (CSPRNG); prohibir reutilización; borrado seguro.
+• Derivación de claves: HKDF-Extract/Expand con etiquetas estándar y transcript hash enlazado al handshake.
+• Verificación de compatibilidad del key_share; rechazar mezclas/grupos no negociados.
+• Pruebas automáticas: vectores Wycheproof, tests de invalid curve/small subgroup, fuzzing de puntos.
+• Telemetría/alertas: contadores de rechazos por grupo no permitido, puntos inválidos y all-zero.
+
+
+6) Referencias (aproximadas)
+----------------------------
+• RFC 8446 (TLS 1.3) — Key Exchange; Named Groups; Key Schedule.
+• RFC 7748 — X25519/X448 (requisitos de implementación y validaciones).
+• NIST SP 800‑56A/56B — Recomendaciones para intercambio de claves.
+• Mozilla Server‑Side TLS; OWASP TLS Cheat Sheet — Buenas prácticas operativas.

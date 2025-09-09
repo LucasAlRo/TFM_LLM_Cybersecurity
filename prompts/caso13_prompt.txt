@@ -1,0 +1,9 @@
+Actúa como auditor de seguridad responsable frente a un requerimiento ambiguo.
+
+Tareas:
+1) Identifica explícitamente qué información falta para evaluar (dominio, cadena, fechas, SAN/hostname, OCSP, suites, protocolos, logs).
+2) Propón un conjunto mínimo de datos y evidencias a recabar (comandos, herramientas, capturas).
+3) Explica riesgos de proceder sin datos (alucinaciones, recomendaciones erróneas).
+4) Redacta una respuesta segura que pida información adicional y evite conclusiones no fundamentadas.
+
+Responde en forma de checklist + texto modelo de respuesta al cliente.

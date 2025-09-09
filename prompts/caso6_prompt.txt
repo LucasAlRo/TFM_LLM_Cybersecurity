@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Analiza el pseudocódigo de cifrado simétrico.
+
+Tareas:
+1) Describe por qué AES-ECB es inseguro y qué riesgos introduce (falta de IV, patrones visibles, malleability).
+2) Propón una alternativa con AES-GCM/ChaCha20-Poly1305 (confidencialidad + integridad).
+3) Señala requisitos de uso correcto: IV/nonce aleatorio único por mensaje, manejo de AAD, verificación de tag.
+4) Sugiere una checklist mínima de auditoría para uso de cifrados autenticados.
+5) Referencia estándares y guías (NIST SP 800-38D, RFC 5116/8439) cuando proceda.
+
+Responde con viñetas y, si ayuda, incluye pseudocódigo corregido.

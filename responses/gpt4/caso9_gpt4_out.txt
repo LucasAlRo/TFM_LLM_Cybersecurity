@@ -1,0 +1,106 @@
+Auditoría de configuración IPsec (strongSwan) — Informe de auditoría
+====================================================================
+
+1) Parámetros débiles y riesgos asociados
+-----------------------------------------
+• IKE: `ike=aes256-sha1-modp1024!`
+  – SHA-1 (PRF/integ) considerado débil por riesgo de colisiones; desaconsejado en políticas actuales.
+  – MODP1024 (grupo 2) ofrece seguridad ~80 bits y es vulnerable frente a adversarios con capacidad de factorización avanzada.
+• ESP: `esp=aes256-sha1!`
+  – Integridad con HMAC-SHA1 (débil). Mejor usar AEAD (AES-GCM) y/o hashes SHA-256/384.
+• Autenticación: `leftauth=psk` / `rightauth=psk`
+  – PSK compartida entre múltiples pares es difícil de rotar y auditar; riesgo de suplantación si el PSK se filtra.
+• Política operativa
+  – Sin restricción explícita de grupos fuertes en ESP (PFS del CHILD_SA no garantizada si no se negocia DH en rekey).
+  – Configuración carece de parámetros claros de rekey (lifetime/ikelifetime/rekeymargin) y reauth.
+
+2) Propuestas de suites/transformaciones seguras (IKEv2 y ESP)
+---------------------------------------------------------------
+• IKEv2 (propuestas AEAD + ECDH; alternativas MODP si ECDH no disponible):
+  – Opción 1 (recomendada): `ike=aes256gcm16-prfsha384-ecp384!`
+  – Opción 2: `ike=aes128gcm16-prfsha256-ecp256!`
+  – Alternativa MODP: `ike=aes256gcm16-prfsha384-modp3072!` (o `modp4096` según política).
+• ESP (CHILD_SA) con AEAD y PFS explícita:
+  – Opción 1: `esp=aes256gcm16-ecp384!`
+  – Opción 2: `esp=aes128gcm16-ecp256!`
+  – Alternativa MODP: `esp=aes256gcm16-modp3072!`
+Notas:
+• GCM en ESP/IKE aporta confidencialidad e integridad autenticada; no mezclar GCM con HMAC redundante.
+• Si la plataforma carece de GCM acelerado, considerar `esp=aes256-sha256-ecp384!` como transición, evitando SHA-1.
+
+3) Autenticación (PSK vs certificados) y gestión de claves
+----------------------------------------------------------
+• Certificados X.509 (o EAP-TLS) recomendados para escalabilidad, rotación y atestación de identidad. Mantienen trazabilidad por par.
+• Si se debe usar PSK:
+  – PSK **único por identidad** (no compartido entre múltiples conexiones).
+  – Longitud alta y aleatoria; almacenamiento seguro (p. ej., swanctl.secrets gestionado por un KMS).
+  – Política de rotación periódica y revocación inmediata ante sospecha de fuga.
+• Considerar `leftauth=pubkey` / `rightauth=pubkey` y `leftid/rightid` certificados.
+
+4) Política de rekeying segura y parámetros recomendados
+--------------------------------------------------------
+• Ejemplo de política:
+  – `ikelifetime=8h`, `lifetime=1h` (CHILD_SA), `rekeymargin=3m`, `rekeyfuzz=10%`, `reauth=yes`.
+  – PFS para CHILD_SA (forzar DH en rekey): incluir grupo en `esp=...-ecp256/384` o `...-modp3072`.
+  – DPD: `dpdaction=restart`, `dpddelay=30s`; opcional `dpdtimeout=120s`.
+• Monitorización: alertas por caída a propuestas débiles; métricas de éxito/fracaso de rekeys.
+
+5) Configuración corregida propuesta (ipsec.conf)
+-------------------------------------------------
+```ini
+# strongSwan IPsec (ipsec.conf) — Perfil endurecido
+conn net-net-secure
+    keyexchange=ikev2
+    left=%any
+    leftid=@gwA.example
+    right=%any
+    rightid=@gwB.example
+
+    # Propuestas robustas (elegir una pareja coherente)
+    ike=aes256gcm16-prfsha384-ecp384!
+    esp=aes256gcm16-ecp384!
+
+    # Alternativa intermedia (128-bit) si se requiere mayor compatibilidad
+    # ike=aes128gcm16-prfsha256-ecp256!
+    # esp=aes128gcm16-ecp256!
+
+    # Si ECDH no está disponible, usar MODP alto (no preferente)
+    # ike=aes256gcm16-prfsha384-modp3072!
+    # esp=aes256gcm16-modp3072!
+
+    # Autenticación
+    leftauth=pubkey
+    rightauth=pubkey
+    # (Cargar certificados/keys en /etc/ipsec.d/ o con swanctl)
+
+    # Rekey/reauth y DPD
+    ikelifetime=8h
+    lifetime=1h
+    rekeymargin=3m
+    rekeyfuzz=10%
+    reauth=yes
+    dpdaction=restart
+    dpddelay=30s
+    # dpdtimeout=120s
+
+    # Operativa
+    auto=start
+```
+Sugerencia: migrar a `swanctl`/`strongswan.conf` si es posible, manteniendo las mismas propuestas.
+
+6) Pruebas y validación
+-----------------------
+• Validación funcional:
+  – `swanctl --initiate --child net-net-secure`
+  – `swanctl --list-sas` (verificar IKE_SA/CHILD_SA, propuestas negociadas y grupos DH).
+• Auditoría de cifrados y PFS:
+  – Comprobar que IKE negocia ECDH (ecp256/384) y ESP usa GCM con PFS.
+• Observabilidad:
+  – Revisar logs de charon por rechazos de propuestas débiles y por reauth periódico.
+  – Métricas: ratio de rekeys exitosos, tiempos de negociación, fallos de DPD.
+
+7) Referencias (aproximadas)
+----------------------------
+• RFC 8247 — IKEv2 Parameters / Algorithm Selection.
+• NIST SP 800-77 — Guide to IPsec VPNs; NIST SP 800-131A — Transitioning the Use of Cryptographic Algorithms.
+• Vendor hardening (strongSwan, distribuciones) — listas de propuestas recomendadas y ejemplos.

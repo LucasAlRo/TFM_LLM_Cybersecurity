@@ -1,0 +1,9 @@
+Eres auditor de seguridad. Endurece esta configuración Apache (hardening).
+
+Tareas:
+1) Propón versión endurecida según guías (NIST, Mozilla, OWASP).
+2) Explica cada cambio (protocols, ciphers, stapling, HSTS, ALPN).
+3) Proporciona bloque de configuración corregido.
+4) Añade tabla comparando riesgos antes/después.
+
+Responde con configuración final + tabla.

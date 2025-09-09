@@ -1,0 +1,17 @@
+SSL Labs B grade — Resumen operativo
+====================================
+
+• La nota B se debe a que faltan cabeceras de seguridad (HSTS) y OCSP stapling.
+• Se menciona posible vulnerabilidad ROBOT, lo que indica soporte de RSA key exchange.
+
+Mejoras sugeridas
+-----------------
+• Activar HSTS en cabeceras.
+• Habilitar OCSP stapling en el servidor web.
+• Evitar suites con RSA key exchange, usando solo ECDHE + AEAD (AES-GCM o ChaCha20).
+• Mantener TLS 1.2 y TLS 1.3 con curvas modernas.
+
+Pruebas recomendadas
+--------------------
+• Ejecutar testssl.sh y SSL Labs tras cambios para confirmar la nota A+.
+• Verificar cabecera HSTS con curl.

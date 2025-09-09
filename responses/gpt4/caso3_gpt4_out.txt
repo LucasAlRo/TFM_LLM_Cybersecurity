@@ -1,0 +1,81 @@
+Verificación de certificados y hostname en cliente TLS 1.3 — Informe de auditoría
+=================================================================================
+
+1) Fallos de verificación detectados (según RFC 8446 / RFC 5280 / RFC 6125; referencias aproximadas)
+----------------------------------------------------------------------------------------------------
+• BUG 1 — Cadena X.509 no validada: no se ejecuta construcción y verificación del camino de certificación
+  contra un almacén de confianza (trust store) con políticas adecuadas (EKU serverAuth, BasicConstraints,
+  pathLen, Name Constraints, algoritmos permitidos).
+• BUG 2 — Hostname no verificado: no se compara el identificador del certificado (SAN dNSName/IPAddress)
+  con el parámetro 'server_name' que se pasa en SNI. Regla de comodines (wildcards) sin aplicar (RFC 6125).
+• BUG 3 — Fechas/algoritmos/revocación omitidos: no se comprueban notBefore/notAfter, tamaño/curva de clave,
+  algoritmo de firma (rechazar MD5/SHA‑1), ni estado de revocación (OCSP/CRL; política soft/hard‑fail).
+
+2) Pseudocódigo corregido (ilustrativo; nombres de función genéricos)
+--------------------------------------------------------------------
+```python
+def tls_connect(server_name, server_ip, port):
+    sock = tcp_connect(server_ip, port)
+    ctx  = tls_new_context(version="TLS1.3", verify_mode="require")  # fallo si la verificación no pasa
+
+    # Cargar confianza y políticas
+    trust = load_system_trust()                      # anclas de confianza
+    policy = {
+        "eku": "serverAuth",
+        "min_key_bits": 2048,
+        "sig_algs_allowed": ["rsa_pss_sha256", "ecdsa_secp256r1_sha256", "rsa_pss_sha384",
+                             "ecdsa_secp384r1_sha384"],
+        "time": now(),
+        "revocation": {"ocsp": "soft-fail", "crl": "check"},  # ajustar a requisitos
+    }
+
+    tls_set_sni(ctx, server_name)
+
+    # Handshake
+    hs = tls_handshake(ctx, sock)
+    if hs != OK:
+        return FAIL("handshake_failed")
+
+    chain = tls_get_peer_chain(ctx)
+    if not chain:
+        return FAIL("no_peer_certificate")
+
+    # 1) Validación de cadena y políticas (RFC 5280)
+    if not validate_path(chain, trust, policy):
+        return FAIL("path_validation_failed")
+
+    # 2) Verificación de hostname (RFC 6125; preferir SAN frente a CN)
+    leaf = chain[0]
+    if not verify_hostname(leaf, server_name):  # SAN dNSName/IP, comodines, IDNA
+        return FAIL("hostname_mismatch")
+
+    # 3) Revocación (OCSP stapling si disponible; CRL según política)
+    if not check_revocation(chain, policy["revocation"]):
+        return FAIL("revocation_check_failed")
+
+    return TLS_OK
+```
+
+3) Riesgos reales si no se corrige
+----------------------------------
+• MITM con certificado emitido para otro dominio (sin verificación de hostname).
+• Aceptación de certificados caducados o con firmas débiles (riesgo de suplantación o downgrade criptográfico).
+• Confianza en cadenas mal construidas o con CAs no autorizadas (falsa ancla de confianza).
+• Ausencia de revocación: exposición a claves comprometidas o emisiones indebidas.
+
+4) Checklist mínima para clientes TLS en producción
+---------------------------------------------------
+• Construcción y verificación del camino de certificación contra trust store de sistema/empresa.
+• Verificación estricta de hostname conforme RFC 6125 (SAN; reglas de comodines; IDNA).
+• Políticas de algoritmo/clave: prohibir MD5/SHA‑1, claves RSA < 2048, curvas inseguras; exigir AEAD modernas.
+• Fechas: rechazar notBefore/notAfter inválidos; tolerancias de reloj acotadas.
+• Revocación: OCSP stapling preferente; CRL o Must‑Staple si la política lo requiere; definir soft vs hard‑fail.
+• Registro de errores de verificación (motivo/fase) y telemetría de fallos.
+• Pruebas automatizadas con certificados de prueba (válido, caducado, revocado, CN‑only, SAN‑mismatch).
+
+5) Referencias (aproximadas)
+----------------------------
+• RFC 8446 (TLS 1.3) — Handshake y consideraciones de verificación en el cliente.
+• RFC 5280 — Path validation, EKU, políticas, revocación.
+• RFC 6125 — Verificación de identidad del servicio (hostname).
+• NIST SP 800‑52r2; OWASP TLS Cheat Sheet — Selección de versiones/suites y buenas prácticas.

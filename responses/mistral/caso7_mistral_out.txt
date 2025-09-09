@@ -1,0 +1,23 @@
+Downgrade en negociación TLS — Resumen operativo
+================================================
+
+1) Qué es y por qué es un problema
+----------------------------------
+• Un atacante puede forzar al cliente a usar versiones o cifrados antiguos si el cliente acepta “bajar” de versión.
+• Esto reduce la seguridad y puede reabrir vulnerabilidades históricas.
+
+2) Qué hacer para evitarlo
+--------------------------
+• No permitir fallback automático a versiones antiguas.
+• Usar listas de cifrados modernas (GCM o ChaCha20-Poly1305) y evitar RC4/3DES/EXPORT.
+• Configurar un mínimo de versión (idealmente TLS 1.2/1.3).
+• Revisar periódicamente la configuración con herramientas de auditoría.
+
+3) Pruebas básicas
+------------------
+• Ejecutar testssl.sh y revisar que no haya versiones/suites obsoletas.
+• Comprobar en capturas que el cliente y servidor usan versiones modernas.
+
+Notas
+-----
+• Consultar la RFC de TLS 1.3 y guías de referencia para detalles y ejemplos.

@@ -1,0 +1,20 @@
+Explicación breve de ataques TLS/SSL
+====================================
+
+BEAST (2011)
+------------
+• Ataque contra TLS 1.0 con CBC.
+• Permitía robar cookies HTTPS.
+• Solución: usar TLS más nuevo.
+
+POODLE (2014)
+-------------
+• Ataque usando SSLv3 y CBC.
+• Permitía leer parte del tráfico.
+• Mitigación: desactivar SSLv3.
+
+Heartbleed (2014)
+-----------------
+• Bug en OpenSSL con la extensión Heartbeat.
+• Permitía leer memoria del servidor.
+• Solución: actualizar OpenSSL.

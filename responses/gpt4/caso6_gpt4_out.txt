@@ -1,0 +1,64 @@
+Uso inseguro de AES-ECB frente a cifrados autenticados — Informe de auditoría
+=============================================================================
+
+1) Por qué AES-ECB es inseguro (riesgos y síntomas)
+---------------------------------------------------
+• Determinismo y patrones visibles: el mismo bloque de texto en claro produce el mismo bloque cifrado.
+  En flujos estructurados (HTTP, JSON, imágenes) aparecen “huellas” repetidas (efecto “ECB penguin”).
+• Ausencia de IV/nonce: ECB no usa IV, por lo que no aporta aleatoriedad por mensaje.
+• Sin integridad/autenticación: permite reordenar/insertar/eliminar bloques sin detección (cut-and-paste).
+  Si la aplicación revela detalles de errores de padding, pueden emerger oráculos de padding a nivel de aplicación.
+• No resiste requisitos modernos: no provee AEAD (confidencialidad + integridad + autenticidad).
+
+2) Alternativas seguras (AEAD)
+------------------------------
+• AES-GCM (NIST SP 800-38D): modo AEAD estandarizado con autenticación mediante tag.
+• ChaCha20-Poly1305 (RFC 8439): AEAD eficiente y robusta, adecuada para ambientes sin AES-NI.
+Ambas requieren **nonce/IV único por mensaje** y **verificación de tag** antes de aceptar el texto en claro.
+
+3) Requisitos de uso correcto (operacional)
+-------------------------------------------
+• Nonce/IV único por mensaje bajo la misma clave (96 bits típico). Nunca reutilizar (especialmente en GCM).
+• AAD (Associated Data): incluir metadatos no cifrados que deben estar protegidos (p. ej., método/URI/headers críticos).
+• Verificación constante del tag antes de usar el plaintext; comparación en tiempo constante.
+• KDF adecuado: derivar claves con sal y parámetros robustos (p. ej., HKDF/Argon2/PBKDF2) y rotarlas periódicamente.
+• Límite de mensajes por clave: definir política de rotación (clave por sesión/periodo).
+• Gestión de errores: “fail closed” si el tag no verifica; no filtrar información en errores.
+
+4) Pseudocódigo corregido (AES‑GCM; variante ChaCha20‑Poly1305 análoga)
+-----------------------------------------------------------------------
+```python
+# Supuesto: key derivada de forma robusta (p. ej., HKDF(password, salt, info="http-msg"))
+
+for msg in http_messages:
+    nonce = random_bytes(12)  # 96 bits; único por (clave, mensaje)
+    aad   = build_http_aad(msg.headers)  # opcional: método, ruta, headers críticos
+
+    ct, tag = AES_GCM_Encrypt(key, nonce, aad, msg.body)
+    send(nonce, aad, ct, tag)
+
+# En recepción:
+nonce, aad, ct, tag = recv()
+ok, body = AES_GCM_Decrypt(key, nonce, aad, ct, tag)  # verifica tag
+if not ok:
+    abort("auth_failed")
+process(body)
+```
+
+5) Checklist mínima de auditoría (AEAD en práctica)
+---------------------------------------------------
+• KDF seguro y con sal; prohibido “password estática → clave directa”.
+• Nonce/IV: aleatorio/contador; **no reutilización** con la misma clave; monitoreo de colisiones.
+• AAD: especificado y estable; versión de esquema incluida para evitar ambigüedades.
+• Tag: verificación previa a todo procesamiento; comparación en tiempo constante; trazas de fallo.
+• Límite operacional: nº máx. de mensajes por clave; rotación/derivación periódica.
+• Almacenamiento/transporte: (nonce, ct, tag[, aad]) bien serializados; pruebas de interoperabilidad.
+• Pruebas: vectores oficiales (NIST/RFC), tests de corrupción de bits, “fuzzing” de no autenticados.
+
+6) Referencias (aprox.)
+-----------------------
+• NIST SP 800-38D — Recomendaciones para AES-GCM (AEAD).
+• RFC 5116 — An Interface and Algorithms for Authenticated Encryption.
+• RFC 8439 — ChaCha20-Poly1305 AEAD Construction.
+```
+

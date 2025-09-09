@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Analiza los resultados resumidos de testssl.sh para dos servidores (A moderno, B heredado).
+
+Tareas:
+1) Resume el estado de cada servidor respecto a buenas prácticas (NIST SP 800-52r2, Mozilla, OWASP).
+2) Identifica riesgos concretos del servidor B y prioriza mitigaciones (quick wins vs cambios mayores).
+3) Propón un plan de endurecimiento (TLS versions, ciphers, grupos ECDH, tickets, HSTS, OCSP stapling, ALPN).
+4) Sugiere pruebas adicionales y qué métricas del informe vigilar en regresiones.
+5) Si procede, justifica compromisos de compatibilidad.
+
+Responde con viñetas y un cuadro de acciones priorizadas.

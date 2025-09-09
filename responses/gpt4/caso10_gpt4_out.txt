@@ -1,0 +1,58 @@
+Auditoría de configuración SSH insegura (sshd_config) — Informe de auditoría
+============================================================================
+
+1) Debilidades identificadas (según CIS Benchmarks, Mozilla SSH Guidelines, NIST SP 800‑131A)
+---------------------------------------------------------------------------------------------
+• PermitRootLogin yes — ⚠️ Riesgo alto: expone la cuenta root al exterior; si comprometen credenciales → control total del host.
+• PasswordAuthentication yes + PermitEmptyPasswords yes + ChallengeResponseAuthentication yes + KbdInteractiveAuthentication yes —
+  ⚠️ Riesgo alto: permite login con contraseña débil, vacía o mecanismos inseguros. Facilita ataques de diccionario/bruteforce.
+• PubkeyAuthentication no — ⚠️ Se desactiva el método más seguro (claves públicas). Se fuerza el uso de contraseñas.
+• X11Forwarding yes — ⚠️ Riesgo de exposición gráfica y escalada lateral. Recomendado off salvo uso controlado.
+• Ciphers aes128-cbc, 3des-cbc, arcfour — ⚠️ Débiles: CBC vulnerable a padding/oracle, 3DES vulnerable a Sweet32, RC4 (arcfour) prohibido.
+• MACs hmac-md5, hmac-sha1 — ⚠️ MD5 y SHA‑1 obsoletos por colisiones; no confiables.
+• KexAlgorithms diffie-hellman-group1-sha1 — ⚠️ Grupo MODP 1024 débil y obsoleto; susceptible a Logjam y ataques DH precomputados.
+
+2) Configuración endurecida propuesta (alineada con CIS/Mozilla/NIST)
+----------------------------------------------------------------------
+```sshconfig
+# SSH endurecido (ejemplo)
+Port 22
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+
+X11Forwarding no
+
+# Algoritmos modernos recomendados
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+KexAlgorithms curve25519-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
+```
+
+Notas:
+• Claves públicas con longitud segura (RSA ≥ 3072, ECDSA ≥ P‑256, ED25519 recomendado).
+• Revisar políticas de rotación y gestión de claves privadas.
+• Considerar cambiar el puerto (Security by Obscurity parcial) o restringir con firewalls/AllowUsers.
+
+3) Impacto operativo y compatibilidad
+-------------------------------------
+• Compatibilidad: clientes antiguos (OpenSSH < 6.7, dispositivos legacy) no soportan AEAD modernos (GCM/ChaCha20) ni curvas altas.
+  Podrían requerir actualización de cliente.
+• Seguridad: endurecimiento evita ataques de diccionario, downgrade y criptografía obsoleta.
+
+4) Pruebas sugeridas
+--------------------
+• `ssh-audit servidor` → muestra algoritmos soportados; detectar CBC/RC4/MD5/SHA‑1 y advertencias.
+• `nmap --script ssh2-enum-algos -p 22 servidor` → listado de ciphers/MACs/KEX soportados.
+• Logs (`/var/log/auth.log`, `journalctl -u sshd`) → revisar intentos de login root/contraseñas; alarmas por repetición.
+
+5) Referencias (aproximadas)
+----------------------------
+• CIS Benchmarks — sección OpenSSH Server.
+• Mozilla SSH Guidelines — configuraciones “modern” e “intermediate”.
+• NIST SP 800‑131A — Transición de algoritmos criptográficos (prohibición SHA‑1, RC4, 3DES).

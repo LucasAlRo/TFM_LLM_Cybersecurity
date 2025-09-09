@@ -1,0 +1,21 @@
+Comparación A/B y Nginx TLS 1.3-only — Resumen operativo
+========================================================
+
+• Servidor A está alineado con prácticas modernas: TLS 1.2/1.3 activos, ciphers fuertes, HSTS, stapling y sin compresión.
+• Servidor B mantiene versiones antiguas (TLS 1.0/1.1), ciphers RC4/3DES y compresión, sin HSTS ni stapling.
+
+Recomendaciones principales
+---------------------------
+• Deshabilitar TLS 1.0/1.1 y eliminar RC4/3DES.
+• Activar orden del servidor en cifrados, HSTS y OCSP stapling.
+• Considerar habilitar TLS 1.3 y preferir X25519.
+
+Plan básico
+-----------
+1) Quick wins: versiones antiguas off, compresión off, RC4/3DES fuera, HSTS y stapling on.
+2) Posterior: activar TLS 1.3, revisar tickets, añadir pruebas en CI.
+
+Nginx TLS 1.3-only + HTTP/3
+---------------------------
+• Configuración robusta (TLS 1.3, AEAD modernas, tickets off, stapling on, HSTS, Alt-Svc h3).
+• Compatibilidad: clientes sin TLS 1.3 no conectarán; evaluar si mantener un perfil 1.2+1.3 en paralelo.

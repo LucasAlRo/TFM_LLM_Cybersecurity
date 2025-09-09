@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Analiza las extensiones 0-RTT (early data) y ALPN en TLS 1.3.
+
+Tareas:
+1) Explica su funcionamiento y beneficios/coste de seguridad.
+2) Identifica riesgos y mitigaciones recomendadas (ej. idempotencia en 0-RTT, políticas de replay, listas de control).
+3) Propón políticas de configuración seguras para un servidor web con HTTP/2 y HTTP/3.
+4) Indica errores comunes que has visto (ej. habilitar 0-RTT sin restricciones de endpoint).
+5) Señala secciones aproximadas de la RFC 8446 y guías prácticas (NIST SP 800-52r2 / Mozilla / OWASP), si aplica.
+
+Responde con viñetas técnicas y recomendaciones accionables.

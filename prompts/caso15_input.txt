@@ -1,0 +1,2 @@
+# Necesidad: checklist de auditoría TLS para servidores web corporativos
+# Debe cubrir: versiones, suites, ALPN, OCSP, HSTS, certificados (issuer, EKU, SAN, fechas), grupos ECDH, tickets, early data, logs, pruebas externas.

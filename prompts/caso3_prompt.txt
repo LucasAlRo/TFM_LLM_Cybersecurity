@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Analiza el pseudocódigo de cliente TLS 1.3.
+
+Tareas:
+1) Identifica y explica todos los fallos de verificación del certificado y del hostname.
+2) Propón correcciones concretas (validación de cadena, EKU, fechas, políticas, hostname RFC 6125, OCSP/CRL).
+3) Indica los riesgos reales (MITM, suplantación, downgrade de validación).
+4) Sugiere una checklist mínima de verificación para clientes TLS en producción.
+5) Referencia normas aproximadas (RFC 8446, RFC 5280, RFC 6125) y guías (NIST/OWASP) cuando proceda.
+
+Responde de forma técnica, con ejemplos de código/pseudocódigo corregido si ayuda.

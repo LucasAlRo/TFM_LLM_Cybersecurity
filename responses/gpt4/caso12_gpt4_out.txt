@@ -1,0 +1,63 @@
+Análisis de informe SSL Labs (Calificación B) — Informe de auditoría
+====================================================================
+
+1) Motivos de la calificación B (según extracto SSL Labs)
+---------------------------------------------------------
+• Falta de HSTS → resta puntos en SSL Labs (sin cabecera Strict-Transport-Security activa).
+• OCSP stapling deshabilitado → el servidor no ofrece información de revocación de certificados.
+• ROBOT: “possibly vulnerable” → el servidor parece responder a pruebas de RSA key exchange (PKCS#1 v1.5).
+• Suites/protocolos → TLS 1.2/1.3 activos y seguros; sin TLS 1.0/1.1 → ✔ conforme.
+• Curvas → X25519/P-256; ✔ modernas (aunque P-256 es el mínimo aceptable).
+
+2) Riesgo de vulnerabilidad ROBOT
+---------------------------------
+• ROBOT (Return Of Bleichenbacher’s Oracle Threat) explota implementaciones de RSA key exchange con PKCS#1 v1.5.
+• Riesgo: posible recuperación de claves de sesión y descifrado de tráfico si el servidor aún soporta RSA key exchange en TLS 1.2.
+• Mitigación:
+  – Confirmar con testssl.sh/sslscan que **no** se ofrece `RSA key exchange` en suites TLS 1.2.
+  – Deshabilitar suites RSA key exchange (usar solo ECDHE/ECDH).
+  – Asegurarse de que certificados y librerías no habilitan PKCS#1 v1.5 legacy.
+
+3) Configuración concreta para mitigar y mejorar a A+
+-----------------------------------------------------
+• HSTS en cabeceras HTTP (Nginx/Apache):
+```nginx
+add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+```
+• OCSP stapling en servidor web (Nginx):
+```nginx
+ssl_stapling on;
+ssl_stapling_verify on;
+ssl_stapling_responder_timeout 5s;
+ssl_stapling_return_errors off;
+```
+• TLS 1.2 suites → restringir a ECDHE + AEAD modernas (AES-GCM, ChaCha20-Poly1305). Ejemplo:
+```nginx
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:'
+            'ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:'
+            'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+ssl_prefer_server_ciphers on;
+```
+• Revisar curva predeterminada: mantener X25519 preferente; añadir secp384r1 como alternativa robusta.
+
+4) Lista de cambios concretos (priorizados)
+-------------------------------------------
+• Habilitar HSTS con preload (tras verificar cobertura total HTTPS).
+• Activar OCSP stapling y verificación.
+• Eliminar cualquier soporte residual a RSA key exchange; sólo ECDHE con AEAD.
+• Confirmar curva X25519 como primera opción; aceptar secp384r1 como fallback.
+• Mantener TLS 1.3 + 1.2 únicamente.
+
+5) Pruebas de verificación posteriores
+--------------------------------------
+• testssl.sh — confirmar ausencia de RSA key exchange; validar stapling y HSTS.
+• SSL Labs — repetir escaneo tras cambios; objetivo A+.
+• nmap ssl-enum-ciphers — comprobar que solo aparecen ECDHE+AEAD suites.
+• curl -I https://example.org — verificar presencia de cabecera HSTS.
+
+6) Referencias (aproximadas)
+-----------------------------
+• Mozilla SSL Config Generator — perfiles “modern” / “intermediate”.
+• NIST SP 800-52r2 — directrices sobre versiones TLS y suites.
+• OWASP TLS Cheat Sheet — anti-patrones y mitigaciones comunes.

@@ -1,0 +1,9 @@
+Eres auditor de seguridad. Explica los ataques BEAST, POODLE y Heartbleed.
+
+Tareas:
+1) Resume vector de ataque y condiciones de explotación.
+2) Explica impacto práctico y datos comprometidos.
+3) Propón mitigaciones históricas y actuales (disable SSLv3/TLS1.0, AEAD-only, patch OpenSSL).
+4) Cita RFCs, advisories o guías relevantes cuando proceda.
+
+Responde con viñetas claras.

@@ -1,0 +1,32 @@
+Análisis del handshake TLS 1.3 — Resumen (alto nivel)
+=====================================================
+
+1) Mensajes y propósito principal
+---------------------------------
+• ClientHello: el cliente anuncia soporte de TLS 1.3, suites y extensiones (ALPN, SNI, key_share).
+• ServerHello: el servidor elige versión y suite y responde con sus parámetros (incl. key_share).
+• EncryptedExtensions: el servidor confirma opciones adicionales (p. ej., ALPN).
+• Certificate: el servidor envía su certificado.
+• Finished: ambas partes confirman que comparten claves y cierran el handshake.
+• (Opcional) Autenticación del cliente: el servidor puede pedir un certificado al cliente.
+
+2) Diferencias clave con TLS 1.2
+--------------------------------
+• TLS 1.3 reduce la latencia (1‑RTT) y puede usar 0‑RTT para mejorar tiempos en reanudaciones.
+• Se simplifican las suites y se priorizan algoritmos modernos (AES‑GCM, ChaCha20‑Poly1305).
+• Mejoras generales de seguridad respecto a versiones previas.
+
+3) Errores comunes observados
+-----------------------------
+• Mantener versiones antiguas por compatibilidad (TLS 1.0/1.1) o suites débiles.
+• Cadena de certificados incompleta o mal configurada.
+• Configuraciones inconsistentes entre servidores (ALPN/SNI).
+
+4) Checklist de auditoría (PCAP + servidor)
+-------------------------------------------
+• PCAP: confirmar negociación TLS 1.3 y suite moderna; revisar certificado y “Finished” sin alertas.
+• Servidor: habilitar TLS 1.3, usar suites modernas, completar la cadena de certificados, probar con herramientas como testssl.sh.
+
+Notas
+-----
+• Para más detalle, consultar la RFC 8446 en las secciones de “Handshake Protocol”. (Referencia aproximada)

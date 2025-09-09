@@ -1,0 +1,96 @@
+Comparación de servidores TLS (A vs B) y evaluación Nginx TLS 1.3-only — Informe de auditoría
+============================================================================================
+
+1) Estado frente a buenas prácticas (NIST SP 800-52r2, Mozilla, OWASP) — Resumen por servidor
+----------------------------------------------------------------------------------------------
+• Servidor A (moderno)
+  – Versiones: TLS 1.3 (OK), TLS 1.2 (OK); TLS 1.1/1.0 deshabilitados → ✔ Conforme.
+  – Cifrados/orden: “Cipher Order: yes” y sólo cifras fuertes → ✔ Conforme (evita elección de suites débiles por el cliente).
+  – Grupos ECDH: X25519, secp384r1 → ✔ Curvas modernas.
+  – Reanudación/Tickets: off → ✔ Evita riesgos de ticket key reuse si no hay rotación robusta.
+  – OCSP stapling: ofrecido y válido → ✔ Mejor latencia y revocación efectiva.
+  – HSTS: activo con “preload; includeSubDomains” → ✔ Endurecimiento del canal.
+  – Compresión: off → ✔ Mitiga CRIME/BREACH.
+  – Vulnerabilidades históricas (BEAST/POODLE/FREAK): no vulnerables.
+  – ALPN: h2/http/1.1 → ✔ HTTP/2 habilitado donde proceda.
+
+• Servidor B (heredado)
+  – Versiones: TLS 1.2 (OK), **TLS 1.1/1.0 (habilitados)**, **TLS 1.3 ausente** → ✖ No conforme.
+  – Cifrados/orden: “Cipher Order: no”; incluye **RC4 y 3DES** → ✖ Riesgo (RC4 biases; 3DES/SWEET32).
+  – Grupos ECDH: sólo secp256r1 → ⚠ Aceptable pero limitado (recomendar X25519 como preferente).
+  – Reanudación/Tickets: **on sin rotación** → ✖ Riesgo de PSK a largo plazo/captura.
+  – OCSP stapling: **off** → ✖ Sin validación pegada; peor latencia.
+  – HSTS: **ausente** → ✖ No fuerza HTTPS en agentes.
+  – Compresión: **on** → ✖ Exposición a CRIME/BREACH.
+  – Vulnerabilidades: potencialmente expuesto a **BEAST/POODLE/FREAK**.
+
+2) Riesgos concretos del servidor B y priorización de mitigaciones
+------------------------------------------------------------------
+• TLS 1.0/1.1 activos → superficie a BEAST/POODLE; facilita downgrades.
+• RC4/3DES presentes → RC4-biases y SWEET32; negociables si el cliente los prefiere (al no forzar orden).
+• Tickets sin rotación → riesgo de reuso prolongado de claves de ticket; dificulta revocación efectiva.
+• Compresión on → CRIME/BREACH.
+• Sin stapling → degradación de latencia y verificación de revocación en el cliente (soft-fail).
+• Sin HSTS → agentes pueden volver a HTTP en escenarios de first-visit/links mixtos.
+
+3) Plan de endurecimiento (quick wins vs cambios mayores)
+---------------------------------------------------------
+QUICK WINS (≤ 1 día):
+  • Deshabilitar TLS 1.0/1.1; fijar mínimo TLS 1.2 (ideal: TLS 1.3 si disponible).
+  • Activar “Cipher Order: yes” y **eliminar RC4/3DES** de la lista.
+  • Desactivar compresión TLS.
+  • Activar OCSP stapling (y verificación).
+  • Activar HSTS en HTTP (max-age≥1 año; includeSubDomains; preload tras validar cobertura).
+  • ALPN: habilitar h2 en servidores que sirvan HTTP/2.
+
+CAMBIOS MAYORES (1–2 semanas):
+  • Habilitar TLS 1.3 (actualizar OpenSSL/terminador si es necesario).
+  • Preferir X25519 en grupos ECDH; mantener secp384r1 como alternativa robusta.
+  • Establecer **rotación de ticket keys** (si se usan): TTL corto, rotación segura y telemetría.
+  • Integrar pruebas automatizadas (CI) con testssl.sh/sslscan y alertas por regresión.
+  • Revisar cadena de certificados y tiempos de respuesta de stapling.
+
+4) Pruebas adicionales y métricas a vigilar
+-------------------------------------------
+• testssl.sh:
+  - Versiones/suites soportadas, orden del servidor, detecciones de RC4/3DES/CBC heredadas, compresión, stapling y HSTS.
+• sslscan / nmap:
+  - `sslscan --no-failed <host>:443` / `nmap -sV --script ssl-enum-ciphers <host>` para validar suites negociables.
+• PCAP:
+  - Comprobar “supported_versions” (1.3 presente), selección del servidor, ALPN y ausencia de compresión.
+• Métricas operativas (post-cambio):
+  - Ratio de conexiones por versión (1.3/1.2), latencia de handshake, tasa de errores, % stapling “good”, tasa de negociaciones RC4/3DES (debe ser 0).
+
+5) Evaluación del perfil Nginx TLS 1.3-only + HTTP/3
+----------------------------------------------------
+• Parámetros clave (TLS 1.3-only):
+  - `ssl_protocols TLSv1.3;` — sólo TLS 1.3.
+  - `ssl_ciphers TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256;` — AEAD modernas.
+  - `ssl_session_tickets off;` — evita riesgos de ticket key reuse si no hay rotación centralizada.
+  - `ssl_stapling on; ssl_stapling_verify on;` — ✔ revocación pegada y verificada.
+  - `add_header Alt-Svc 'h3=":443"';` — anuncia HTTP/3/QUIC.
+  - `Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"` — ✔ HSTS fuerte.
+  - Nota: `ssl_prefer_server_ciphers` no aplica a TLS 1.3.
+• Juicio técnico:
+  - Perfil **muy robusto** para clientes 1.3/QUIC, con buena postura criptográfica.
+  - **Trade-off** de compatibilidad: clientes sin TLS 1.3 no podrán conectar; considerar un perfil “intermediate” en paralelo si es requisito.
+
+6) Cuadro de acciones priorizadas (para el Servidor B)
+------------------------------------------------------
+| Acción                                              | Prioridad | Impacto Seguridad | Esfuerzo |
+|-----------------------------------------------------|-----------|-------------------|----------|
+| Deshabilitar TLS 1.0/1.1; forzar ≥ TLS 1.2         | Alta      | Alto              | Bajo     |
+| Eliminar RC4/3DES y forzar “Cipher Order: yes”     | Alta      | Alto              | Bajo     |
+| Desactivar compresión TLS                           | Alta      | Medio             | Bajo     |
+| Activar OCSP stapling (+ verify)                    | Media     | Medio             | Bajo     |
+| Activar HSTS (max-age≥1a; includeSubDomains)        | Media     | Medio/Alto        | Bajo     |
+| Habilitar TLS 1.3 (actualización librerías)         | Media     | Alto              | Medio    |
+| Preferir X25519 (grupos ECDH)                       | Media     | Medio             | Bajo     |
+| Rotación de ticket keys (si tickets=on)             | Media     | Medio             | Medio    |
+| Integrar CI con testssl.sh/sslscan + alertas        | Media     | Medio             | Medio    |
+
+7) Referencias (orientativas)
+-----------------------------
+• NIST SP 800-52r2 — Selección de versiones y suites TLS en servidores.
+• Mozilla SSL Config Generator — Perfiles modern/intermediate; grupos y suites.
+• OWASP TLS Cheat Sheet — Buenas prácticas de despliegue TLS.

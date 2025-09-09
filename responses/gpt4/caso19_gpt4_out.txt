@@ -1,0 +1,89 @@
+Endurecimiento de configuración Apache HTTPS (mod_ssl) — Informe de auditoría
+=============================================================================
+
+1) Diagnóstico inicial (riesgos detectados)
+-------------------------------------------
+• Protocolos: `SSLProtocol all` habilita versiones obsoletas (SSLv3/TLS 1.0/1.1) ⇒ superficie a BEAST/POODLE/downgrade.
+• Cifrados: `SSLCipherSuite ALL:!aNULL` permite suites débiles (RC4/3DES/CBC/EXPORT) ⇒ pérdida de confidencialidad/integridad.
+• Orden: `SSLHonorCipherOrder off` ⇒ el cliente podría imponer suites peores.
+• Compresión: `SSLCompression on` ⇒ riesgo de CRIME/BREACH.
+• Revocación: `SSLUseStapling off` ⇒ sin OCSP stapling (peor latencia y verificación).
+• ALPN: sólo `http/1.1` ⇒ se desaprovecha HTTP/2.
+• HSTS: no configurado ⇒ posible *downgrade* a HTTP en primeras visitas/enlaces mixtos.
+
+2) Configuración endurecida propuesta (alineada con NIST SP 800-52r2, Mozilla, OWASP)
+--------------------------------------------------------------------------------------
+```apache
+# Apache HTTPS — perfil endurecido (intermediate/modern)
+ServerName corp.local
+
+# Protocolos seguros
+SSLProtocol -all +TLSv1.3 +TLSv1.2
+
+# Cifrados
+#   TLS 1.3: seleccionar explícitamente (si Apache/OpenSSL lo soportan por versión)
+SSLCipherSuite TLSv1.3 TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256
+#   TLS 1.2: sólo AEAD modernas, ECDHE obligatorio (sin RC4/3DES/CBC/EXPORT)
+SSLCipherSuite TLSv1.2 ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305
+SSLHonorCipherOrder on
+
+# Grupos elípticos recomendados (requiere OpenSSL >=1.1.1)
+SSLOpenSSLConfCmd Curves X25519:secp384r1
+
+# Compresión deshabilitada (mitiga CRIME)
+SSLCompression off
+
+# Tickets de sesión deshabilitados o gestionados externamente (evita riesgos de reuse)
+SSLSessionTickets off
+
+# OCSP stapling (revocación pegada al handshake)
+SSLUseStapling on
+SSLStaplingResponderTimeout 5
+SSLStaplingReturnResponderErrors off
+# Cache para stapling (asegúrate de tener cargado mod_socache_shmcb)
+SSLStaplingCache "shmcb:/var/run/apache2/stapling_cache(128000)"
+
+# ALPN: habilitar HTTP/2 y mantener HTTP/1.1
+Protocols h2 http/1.1
+
+# HSTS (2 años; incluye subdominios; solicitar preload tras validar cobertura total HTTPS)
+Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always
+
+# (Opcional) Seguridad adicional de cabeceras
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+```
+
+3) Justificación de cambios
+---------------------------
+• **Protocolos (TLS ≥1.2, ideal 1.3)**: elimina SSLv3/TLS 1.0/1.1 → evita *downgrade* y vulnerabilidades históricas.  
+• **Cifrados AEAD + ECDHE**: asegura confidencialidad e integridad autenticada; excluye RC4/3DES/CBC/EXPORT.  
+• **Orden del servidor**: garantiza negociación de suites fuertes incluso con clientes “permisivos”.  
+• **Curvas X25519/secp384r1**: grupos modernos con buen rendimiento/seguridad.  
+• **Compresión off**: mitiga CRIME/BREACH.  
+• **OCSP stapling + verify**: mejora latencia y fiabilidad de revocación.  
+• **Tickets off**: evita riesgos de PSK de larga vida si no hay rotación centralizada; usar KMS si se requieren.  
+• **ALPN h2**: habilita HTTP/2 (rendimiento) manteniendo compatibilidad con HTTP/1.1.  
+• **HSTS**: fuerza HTTPS en agentes tras primera visita (recomendado incluir `preload` tras verificar cobertura).
+
+4) Tabla comparativa de riesgos (antes vs después)
+--------------------------------------------------
+| Aspecto            | Antes (riesgo)                                    | Después (mitigación)                                               |
+|--------------------|----------------------------------------------------|--------------------------------------------------------------------|
+| Protocolos         | SSLv3/TLS 1.0/1.1 potencialmente activos           | Sólo TLS 1.2 y 1.3                                                 |
+| Cifrados           | RC4/3DES/CBC/EXPORT negociables                    | AEAD modernas (AES‑GCM/ChaCha20) con ECDHE                         |
+| Orden de suites    | Cliente puede imponer suites débiles               | `SSLHonorCipherOrder on`                                           |
+| Compresión         | `on` → CRIME/BREACH                                | `off`                                                              |
+| OCSP stapling      | `off`                                              | `on` + *timeouts* adecuados + caché                                |
+| Tickets de sesión  | Impredecibles/activos sin rotación                 | `SSLSessionTickets off` (o rotación gestionada)                    |
+| HSTS               | Ausente                                            | Cabecera HSTS (2 años, subdominios, *preload*)                     |
+| ALPN               | Sólo HTTP/1.1                                      | HTTP/2 + HTTP/1.1                                                  |
+
+5) Verificación posterior (sugerida)
+------------------------------------
+`testssl.sh -p -S -U --color 0 https://corp.local`  
+`sslscan --no-failed --tls12 --tls13 corp.local:443`  
+`curl -I https://corp.local | sed -n '1,25p'`
+
+Referencias (orientativas): NIST SP 800‑52r2; Mozilla SSL Config Generator; OWASP TLS Cheat Sheet.

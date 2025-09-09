@@ -1,0 +1,33 @@
+AES-ECB vs cifrados autenticados — Resumen operativo
+====================================================
+
+1) Por qué ECB no es recomendable
+---------------------------------
+• El mismo bloque en claro produce el mismo bloque cifrado (patrones visibles).
+• No usa IV y no aporta autenticación, por lo que no detecta cambios.
+
+2) Alternativas
+---------------
+• Usar AES-GCM o ChaCha20-Poly1305 para confidencialidad e integridad.
+• Requieren nonce por mensaje y verifican un tag de autenticación.
+
+3) Requisitos básicos
+---------------------
+• Generar un nonce único por mensaje.
+• Incluir datos asociados (AAD) si es necesario.
+• Verificar siempre el tag antes de aceptar el mensaje.
+
+4) Pseudocódigo básico (GCM)
+----------------------------
+```python
+nonce = random_bytes(12)
+aad   = build_http_aad(headers)
+ct, tag = AES_GCM_Encrypt(key, nonce, aad, body)
+send(nonce, aad, ct, tag)
+```
+
+5) Checklist mínima
+-------------------
+• Derivar la clave de forma segura (KDF con sal).
+• No reutilizar nonces.
+• Probar con vectores conocidos y rechazar si falla la verificación.

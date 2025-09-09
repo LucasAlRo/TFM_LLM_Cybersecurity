@@ -1,0 +1,17 @@
+# Handshake TLS 1.3 — Resumen técnico (parafraseado)
+Mensajes y propósito criptográfico (alto nivel):
+1) ClientHello -> anuncia soporte de TLS 1.3, suites de cifrado, algoritmos, extensiones (ej. key_share).
+2) ServerHello -> selecciona versión, suite y grupo; devuelve su key_share. Se establecen secretos efímeros (EC)DHE.
+3) [Handshake cifrado] -> desde aquí, los mensajes se protegen con claves de tráfico de handshake.
+4) EncryptedExtensions -> parámetros adicionales negociados (ej. ALPN).
+5) Certificate -> cadena de certificados del servidor.
+6) CertificateVerify -> prueba de posesión de la clave privada.
+7) Finished -> confirma claves y transición a claves de aplicación.
+8) (Opcional) Autenticación del cliente -> Certificate, CertificateVerify, Finished desde el lado cliente.
+9) Datos de aplicación bajo claves de aplicación (ej. HTTPS).
+
+Diferencias con TLS 1.2:
+- Eliminación de RSA key exchange; uso obligatorio de (EC)DHE efímero.
+- Menor latencia (1-RTT) + soporte 0-RTT (con riesgo de repetición).
+- Cifrado temprano de metadatos del handshake.
+- Retiro de suites obsoletas; separación clear de secretos (early|handshake|application traffic secrets).

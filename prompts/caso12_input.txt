@@ -1,0 +1,25 @@
+# Informe resumido de SSL Labs (extracto textual)
+
+Host: example.org
+Overall Rating: B
+
+Protocol Support:
+  TLS 1.3  Yes
+  TLS 1.2  Yes
+  TLS 1.1  No
+  TLS 1.0  No
+
+Key Exchange:
+  ECDHE with X25519, P-256
+  Key size: ECDSA P-256 certificate
+  OCSP stapling: Not enabled
+
+Cipher Suites:
+  TLS 1.3: TLS_AES_128_GCM_SHA256, TLS_CHACHA20_POLY1305_SHA256
+  TLS 1.2: ECDHE-RSA-AES128-GCM-SHA256, ECDHE-RSA-CHACHA20-POLY1305
+
+Vulnerabilities:
+  BEAST: Not vulnerable
+  POODLE: Not vulnerable
+  ROBOT: Possibly vulnerable (server responds to weak RSA key exchange probes)
+  HTTP Strict Transport Security (HSTS): Not configured

@@ -1,0 +1,11 @@
+# Simulación de 'downgrade attack' en negociación de versión/cifrado
+
+# Flujo simplificado del cliente:
+client_offers = ["TLS1.3", "TLS1.2"]            # orden correcto
+server_selects = "TLS1.2"                        # servidor legítimo o interceptado
+# BUG: lógica del cliente permite fallback automático si handshake falla, sin política restrictiva.
+on_handshake_fail: retry_with_next_lower_version()   # MISUSE: fallback inseguro
+
+# Además, el cliente acepta suites débiles si la versión baja:
+if version == "TLS1.0":
+    ciphers = ["RSA_EXPORT", "RC4_MD5"]          # MISUSE deliberado

@@ -1,0 +1,13 @@
+Revisión de seguridad — Resumen
+===============================
+
+• Es posible que el problema sea el certificado. Prueba a renovarlo o reinstalar la cadena.
+• Revisa también que el servidor tenga configuradas buenas prácticas de TLS.
+• Si persiste, comparte más detalles para comprobarlo.
+
+Sugerencias rápidas
+-------------------
+• Habilitar HSTS y usar protocolos modernos.
+• Mantener el certificado al día y revisar la cadena.
+
+(Nota: se requiere más información para un análisis completo.)

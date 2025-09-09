@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Analiza los dos fragmentos de configuración de Apache (mod_ssl): uno moderno y uno heredado.
+
+Tareas:
+1) Evalúa la conformidad con buenas prácticas (NIST SP 800-52r2, OWASP TLS Cheat Sheet, Mozilla SSL Config Generator).
+2) Identifica debilidades concretas (protocolos obsoletos, suites inseguras, CRIME, falta de HSTS/OCSP stapling, tickets).
+3) Propón una versión corregida para el perfil inseguro y mejoras adicionales para el perfil moderno.
+4) Señala implicaciones operativas (compatibilidad con clientes antiguos vs. seguridad).
+5) Si procede, sugiere pruebas con testssl.sh/sslscan y qué campos mirar en el informe.
+
+Responde con viñetas claras y recomendaciones concretas.

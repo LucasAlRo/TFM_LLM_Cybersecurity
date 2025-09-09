@@ -1,0 +1,10 @@
+Eres auditor de seguridad. Revisa este pseudocódigo de (EC)DHE.
+
+Tareas:
+1) Enumera y explica todos los fallos (validación de grupo, puntos inválidos, orden pequeño, reuse de nonces).
+2) Mapea cada fallo a riesgos prácticos (clave nula, ataques de invalid curve, downgrade, KCI).
+3) Propón correcciones alineadas con TLS 1.3 (uso de transcript hash, HKDF-Extract/Expand, verificación de key_share/grupo).
+4) Añade una checklist para validación de parámetros y puntos públicos.
+5) Cita secciones aproximadas de RFC 8446 y guías prácticas si procede.
+
+Responde con viñetas y, si ayuda, pseudocódigo corregido.

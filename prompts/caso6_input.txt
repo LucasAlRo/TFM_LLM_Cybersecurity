@@ -1,0 +1,11 @@
+# Implementación de cifrado simétrico — MISUSE: ECB vs GCM
+
+# Pseudocódigo (inseguro) que cifra mensajes HTTP con AES-128-ECB.
+# Problemas deliberados: ECB sin IV, sin autenticación, reuso de clave, padding no validado.
+
+key = KDF("static-password")        # MISUSE: derivación débil y estática
+for msg in http_messages:
+    ct = AES_128_ECB_Encrypt(key, pad(msg))   # MISUSE: ECB (sin IV) y sin autenticación
+    send(ct)
+
+# Comentario: no hay integridad/autenticación; susceptible a reordenación/bloques repetidos.

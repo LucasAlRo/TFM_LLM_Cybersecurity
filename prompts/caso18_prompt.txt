@@ -1,0 +1,9 @@
+Explica el handshake TLS 1.3 a un público no experto.
+
+Tareas:
+1) Usa analogías simples (candado, llaves, saludo).
+2) Explica roles (cliente/servidor) y mensajes en lenguaje llano.
+3) Evita jerga excesiva; máximo 1 página.
+4) Concluye con importancia práctica (seguridad web diaria).
+
+Responde como si fuera material divulgativo.

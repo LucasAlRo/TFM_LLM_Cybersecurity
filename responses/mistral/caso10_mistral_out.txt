@@ -1,0 +1,27 @@
+SSH inseguro (sshd_config) — Resumen operativo
+==============================================
+
+1) Debilidades
+--------------
+• Root login permitido → aumenta el riesgo si se adivina la contraseña.
+• Autenticación por contraseña y vacías → expone al sistema a ataques de fuerza bruta.
+• Algoritmos antiguos (CBC, RC4, MD5, SHA‑1, DH group1) → no recomendados hoy.
+
+2) Configuración más segura (básica)
+------------------------------------
+```sshconfig
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+KexAlgorithms curve25519-sha256
+```
+
+3) Impacto operativo
+--------------------
+• Algunos clientes antiguos no podrán conectarse si no soportan estos algoritmos modernos.
+
+4) Pruebas
+----------
+• Ejecutar ssh-audit o nmap con script de SSH para revisar qué algoritmos están activos.

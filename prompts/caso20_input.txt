@@ -1,0 +1,3 @@
+# Contexto: respuestas de LLM vs herramientas externas
+
+Objetivo: comprobar consistencia de respuestas de LLM con testssl.sh/sslscan/Qualys.

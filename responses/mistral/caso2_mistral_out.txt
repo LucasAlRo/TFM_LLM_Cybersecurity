@@ -1,0 +1,27 @@
+0-RTT y ALPN en TLS 1.3 — Resumen operativo
+===========================================
+
+1) Funcionamiento y beneficios
+------------------------------
+• 0-RTT (early data) reduce la latencia permitiendo enviar datos antes de terminar el handshake.
+• ALPN selecciona el protocolo de aplicación sobre TLS (por ejemplo, HTTP/2), mejorando compatibilidad y rendimiento.
+
+2) Riesgos y mitigaciones
+-------------------------
+• 0-RTT puede permitir reenvíos (replay) en algunos escenarios. Conviene limitarlo y usar rutas seguras.
+• Mantener suites modernas y certificados correctos suele ser suficiente en la práctica.
+
+3) Políticas de configuración sugeridas
+---------------------------------------
+• TLS 1.3 activo, TLS 1.2 como respaldo con cifrados modernos.
+• Activar ALPN con HTTP/2 cuando sea posible.
+• 0-RTT opcional según necesidades de rendimiento.
+
+4) Errores comunes
+------------------
+• Habilitar versiones antiguas de TLS o suites heredadas por compatibilidad.
+• No revisar periódicamente la configuración con herramientas como testssl.sh.
+
+Notas
+-----
+• Para más información, revisar la RFC de TLS 1.3 y documentación del servidor web.

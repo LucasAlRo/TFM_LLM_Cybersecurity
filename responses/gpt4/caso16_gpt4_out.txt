@@ -1,0 +1,51 @@
+Explicación de ataques históricos TLS/SSL — Informe de auditoría
+================================================================
+
+BEAST (2011)
+------------
+• Vector de ataque:
+  – Vulnerabilidad en TLS 1.0 CBC: IV predecible y reutilizable.
+  – Requiere atacante MITM + JavaScript malicioso en navegador para forzar patrones en bloques.
+• Impacto:
+  – Robo de cookies de sesión HTTPS (ej. autenticación persistente).
+  – Exposición de tokens de sesión en tráfico cifrado.
+• Mitigaciones (históricas y actuales):
+  – Migrar a TLS 1.1/1.2 (uso de IV aleatorio por bloque).
+  – Emplear AEAD (AES-GCM, ChaCha20-Poly1305).
+  – Parches en navegadores que fragmentaban registros para mitigar CBC-IV.
+• Referencias:
+  – RFC 2246 (TLS 1.0), RFC 4346 (TLS 1.1).
+  – Public advisories de 2011 (BEAST SSL/TLS attack).
+
+POODLE (2014)
+-------------
+• Vector de ataque:
+  – Downgrade forzado a SSLv3 con CBC.
+  – Padding oracle en CBC que permite fuga de bytes de texto en claro.
+• Impacto:
+  – Descifrado parcial de tráfico HTTPS bajo SSLv3.
+  – Compromiso de cookies y datos sensibles en conexiones degradadas.
+• Mitigaciones:
+  – Deshabilitar SSLv3 en servidores y clientes.
+  – Activar mecanismos anti-downgrade (RFC 7507 — TLS_FALLBACK_SCSV).
+  – Migrar a TLS 1.2/1.3 únicamente.
+• Referencias:
+  – Advisory de Google Security (2014).
+  – RFC 7507 (TLS Fallback SCSV).
+
+Heartbleed (2014)
+-----------------
+• Vector de ataque:
+  – Bug en OpenSSL (v1.0.1–1.0.1f) en la extensión Heartbeat.
+  – Lectura out-of-bounds de memoria del servidor → fuga arbitraria de 64 KB por solicitud.
+• Impacto:
+  – Exfiltración de memoria sensible: claves privadas, cookies, contraseñas, datos en sesión.
+  – Compromiso completo de la confidencialidad si se filtra la clave privada.
+• Mitigaciones:
+  – Actualizar OpenSSL ≥1.0.1g (parche liberado en abril 2014).
+  – Revocar y regenerar certificados potencialmente expuestos.
+  – Monitorizar tráfico y aplicar IDS/IPS con reglas de detección (Snort/Suricata).
+• Referencias:
+  – CVE-2014-0160 (Heartbleed advisory).
+  – NIST Vulnerability Notes Database.
+  – OpenSSL Security Advisory [07 Apr 2014].

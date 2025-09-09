@@ -1,0 +1,80 @@
+Extensiones 0-RTT y ALPN en TLS 1.3 — Informe de auditoría
+===========================================================
+
+1) Funcionamiento y beneficios/coste de seguridad
+-------------------------------------------------
+• 0-RTT (early data): Permite enviar datos de aplicación antes de completar el handshake 1‑RTT,
+  reutilizando un PSK/ticket de sesión previo. El tráfico early data se cifra con secretos 0‑RTT
+  derivados del PSK, pero **no** ofrece forward secrecy respecto al PSK y es **susceptible a replay**.
+  Beneficio: menor latencia en reanudaciones. Coste: mayores requisitos de control en el servidor.
+• ALPN (Application-Layer Protocol Negotiation): Negocia el protocolo de aplicación sobre TLS
+  (p. ej., “h2” para HTTP/2). En HTTP/3, la negociación usa QUIC + TLS 1.3 integrado; se anuncia
+  “h3” mediante ALPN en el stack QUIC correspondiente. Beneficio: selección explícita del protocolo
+  (rendimiento/compatibilidad). Coste: debe alinearse con versiones/ciphers y la pila concreta (TLS vs QUIC).
+
+2) Riesgos y mitigaciones recomendadas
+--------------------------------------
+• 0-RTT:
+  – Riesgo de **repetición (replay)** por diseño. Mitigaciones:
+    ▸ Restringir early data a **operaciones idempotentes** (p. ej., GET sin efectos laterales).
+    ▸ **Anti‑replay** en el perímetro: caché/filtro de tickets a nivel de balanceador/terminador, ventana temporal corta,
+      marca de un‑solo‑uso por ticket, TTL estricto y persistencia entre nodos si hay varios frontales.
+    ▸ Encapsular endpoints críticos detrás de rutas que **rechacen 0‑RTT** de forma explícita.
+    ▸ Registrar y alertar sobre early data aceptado/rechazado para auditoría.
+  – No forward secrecy para early data: minimizar datos sensibles en 0‑RTT; forzar 1‑RTT para autenticación y cambios de estado.
+• ALPN:
+  – **Downgrade/mismatch**: incoherencias entre ALPN anunciado y pila real (p. ej., anunciar “h2” pero bloquear requisitos de HTTP/2).
+    Mitigaciones: listas ALPN explícitas y pruebas automáticas por vhost.
+  – **Compatibilidad HTTP/2**: con TLS 1.2, HTTP/2 exige AEAD modernas, sin compresión TLS ni renegociación; en TLS 1.3, alinear
+    suites AEAD (AES‑GCM/ChaCha20) y curvas seguras.
+  – **HTTP/3/QUIC**: separar claramente los listeners QUIC (UDP) de los listeners TLS (TCP) y el set de ALPN correspondiente.
+
+3) Políticas de configuración seguras (HTTP/2 y HTTP/3)
+-------------------------------------------------------
+• Principios comunes:
+  – TLS: forzar **TLS 1.3** (permitir 1.2 solo con AEAD modernas); grupos X25519, secp256r1; desactivar suites heredadas.
+  – Certificados: cadena completa, OCSP stapling, SAN correcto y políticas ALPN coherentes con vhosts.
+  – 0‑RTT: deshabilitado por defecto; si se habilita, restringir a rutas idempotentes y aplicar controles anti‑replay.
+• Nginx (ejemplo orientativo):
+  ```nginx
+  # Listener TLS para HTTP/2 (TCP)
+  server {
+      listen 443 ssl http2;
+      server_name ejemplo.com;
+
+      ssl_protocols TLSv1.3 TLSv1.2;
+      ssl_ciphers TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256;
+      ssl_early_data off;  # activar solo si hay controles anti‑replay y rutas idempotentes
+
+      add_header Alt-Svc 'h3=":443"; ma=86400';  # anuncio de HTTP/3
+      # … resto de config (certs, OCSP, etc.)
+  }
+
+  # Listener QUIC para HTTP/3 (UDP) — depende de la build/versión
+  # server {
+  #     listen 443 quic reuseport;
+  #     http3 on;
+  #     ssl_early_data off;
+  #     add_header Alt-Svc 'h3=":443"; ma=86400';
+  # }
+  ```
+• Apache (ideas generales):
+  – TLS 1.3 habilitado; ALPN explícito con “h2” en vhosts TLS.
+  – Revisar soporte/versión para HTTP/3 (módulos/compilación QUIC según distribución).
+• Políticas 0‑RTT:
+  – **Default**: off. Si on, mapear método/ruta para aceptar solo GET/HEAD en rutas estáticas;
+    rechazar POST/PUT/PATCH/DELETE; registrar métricas y alarmas ante rechazos/aceptaciones.
+
+4) Errores comunes de configuración
+-----------------------------------
+• Habilitar 0‑RTT sin restricciones de método/ruta ni anti‑replay compartido en balanceadores.
+• Anunciar “h2” por ALPN pero permitir ciphers o flags incompatibles (compresión TLS, renegociación).
+• Mezclar HTTP/3 con listeners TCP sin separar adecuadamente QUIC/UDP y el ALPN “h3”.
+• Permitir rutas de autenticación/cambio de estado bajo 0‑RTT.
+
+5) Referencias (indicativas)
+----------------------------
+• RFC 8446 (TLS 1.3): Handshake, 0‑RTT early data, Key Schedule.
+• NIST SP 800‑52r2: directrices de selección de versiones y suites TLS.
+• Mozilla Server‑Side TLS: guías de configuración actualizadas.
+• OWASP TLS Cheat Sheet: buenas prácticas y anti‑patrones.

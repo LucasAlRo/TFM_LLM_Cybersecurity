@@ -1,0 +1,22 @@
+# Pseudocódigo cliente TLS 1.3 — BUG: verificación de certificado/hostname incompleta
+
+function tls_connect(server_name, server_ip, port):
+    sock = tcp_connect(server_ip, port)
+    ctx  = tls_new_context(version="TLS1.3", verify_mode="peer")  # dice verificar, pero...
+    tls_set_sni(ctx, server_name)
+
+    # Handshake
+    hs = tls_handshake(ctx, sock)
+    if hs != OK:
+        return FAIL
+
+    cert = tls_get_peer_certificate(ctx)
+    # BUG 1: se comprueba que "exista" certificado pero NO se valida la cadena ni políticas.
+    if cert is None:
+        return FAIL
+
+    # BUG 2: NO se valida el hostname del certificado contra 'server_name' (RFC 6125).
+    # BUG 3: NO se verifica el uso de algoritmos y fechas (RFC 5280) ni firmas/ocsp.
+
+    # Continúa como si todo fuera válido...
+    return TLS_OK

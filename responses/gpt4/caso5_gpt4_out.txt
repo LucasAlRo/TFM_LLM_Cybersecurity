@@ -1,0 +1,99 @@
+Configuración TLS en servidores Apache (mod_ssl) — Informe de auditoría
+=======================================================================
+
+1) Evaluación de conformidad con buenas prácticas (NIST SP 800‑52r2, OWASP TLS Cheat Sheet, Mozilla SSL Config)
+---------------------------------------------------------------------------------------------
+• Perfil moderno
+  – Protocolos: deshabilita SSLv3/TLSv1.0/TLSv1.1; mantiene TLS 1.2/1.3 → conforme.
+  – Cifras: suites explícitas de TLS 1.3 (AES‑GCM y ChaCha20‑Poly1305) → conforme.
+  – Orden de cifrados: SSLHonorCipherOrder on (efecto principal en TLS 1.2) → aceptable.
+  – Compresión: off → mitiga CRIME.
+  – OCSP stapling: on (con timeouts configurados) → conforme.
+  – Tickets: off → reduce riesgos de reuso de claves de ticket/rotación.
+  – ALPN: h2 + http/1.1 → adecuado para HTTP/2 sobre TLS.
+  – Mejora sugerida: añadir HSTS a nivel HTTP (cabecera) y revisar política de compatibilidad con clientes legacy.
+• Perfil inseguro
+  – Protocolos: “all” → habilita versiones obsoletas (SSLv3/TLSv1.0/1.1) → no conforme.
+  – Cifras: “ALL:!aNULL” → incluye CBC/RC4/SHA‑1 y otras suites débiles → no conforme.
+  – Orden de cifrados: off → el cliente puede preferir suites débiles → no conforme.
+  – Compresión: on → vulnerable a CRIME/BREACH (según contexto) → no conforme.
+  – OCSP stapling: off → sin verificación eficiente de revocación en servidor → no conforme.
+  – Tickets: on sin política → riesgo de reuso/rotación deficiente → no conforme.
+  – ALPN: sólo http/1.1 → sin HTTP/2 → oportunidad de mejora.
+
+2) Debilidades concretas identificadas
+--------------------------------------
+• Versiones obsoletas activas: SSLv3/TLSv1.0/1.1 (downgrade y fallos conocidos).
+• Suites débiles/legacy: RC4, 3DES, CBC con SHA‑1; riesgo de ataques conocidos y calificaciones bajas en SSL Labs.
+• Compresión TLS activa: expone a CRIME; debe deshabilitarse.
+• OCSP stapling desactivado: peores tiempos y ausencia de info de revocación “pegada” al handshake.
+• Session Tickets sin política: exige rotación segura de keys; deshabilitar o gestionar con KMS.
+• Falta de HSTS/seguridad HTTP complementaria: no fuerza HTTPS en el user-agent.
+
+3) Versión corregida del perfil inseguro (propuesta aplicable)
+--------------------------------------------------------------
+```apache
+# Apache HTTPS (mod_ssl) — perfil corregido
+SSLProtocol             all -SSLv3 -TLSv1 -TLSv1.1
+SSLEngine               on
+
+# TLS 1.3 suites (TLS 1.2 quedará restringido por OpenSSL/Apache a AEAD modernas si está habilitado)
+SSLCipherSuite          TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256
+SSLHonorCipherOrder     on
+SSLCompression          off
+
+# Revocación (stapling)
+SSLUseStapling          on
+SSLStaplingResponderTimeout 5
+SSLStaplingReturnResponderErrors off
+
+# Session resumption
+SSLSessionTickets       off   # o 'on' con rotación segura y TTL corto gestionado externamente
+
+# ALPN
+Protocols               h2 http/1.1
+
+# Cabeceras HTTP de refuerzo (en el vhost HTTPS)
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "DENY"
+```
+Notas:
+• Si necesita compatibilidad con clientes legacy, evalúe mantener TLS 1.2 con sólo AEAD/ECDHE modernas.
+• HSTS requiere servir **exclusivamente** por HTTPS en el dominio y subdominios (use con cuidado).
+
+4) Mejoras incrementales para el perfil moderno
+-----------------------------------------------
+• Añadir HSTS y cabeceras complementarias de seguridad HTTP en el vhost HTTPS.
+• Verificar rotación de claves de OCSP stapling y monitorizar fallos de respuesta.
+• Mantener “tickets off” o, si se activan, gestionar rotación de keys de tickets (clave de sesión) en un KMS con TTL corto.
+• Revisar métricas periódicas con testssl.sh/sslscan y pipelines CI para evitar regresiones de configuración.
+• Considerar HTTP/3 (QUIC) en un listener separado (no mod_ssl) si el stack/versión lo soporta.
+
+5) Implicaciones operativas (compatibilidad vs. seguridad)
+----------------------------------------------------------
+• Deshabilitar TLS 1.0/1.1 mejora seguridad y puntuaciones, pero rompe clientes muy antiguos (legacy embebidos).
+• Sólo suites AEAD modernas evita CBC/SHA‑1; puede excluir agentes obsoletos.
+• HSTS endurece el canal (HTTPS‑only); aplicar tras verificar que **todo** el sitio sirve por HTTPS.
+
+6) Pruebas recomendadas con testssl.sh / sslscan
+------------------------------------------------
+Comandos:
+```bash
+testssl.sh -p -s -U --color 0 https://example.com
+sslscan --no-failed --ssl2 --ssl3 --tls10 --tls11 --tls12 --tls13 example.com:443
+```
+
+Campos a revisar en el informe:
+• Versiones soportadas (TLS 1.2/1.3) y ausencia de SSLv3/TLS 1.0/1.1.
+• Suites activas (sólo AEAD) y orden de preferencia del servidor (para 1.2).
+• Compresión TLS (debe indicar “NO”).
+• OCSP stapling: “offered”/“good” y tiempos de respuesta.
+• ALPN/HTTP/2 negociado correctamente.
+• HSTS visible en respuesta HTTP: `curl -I https://example.com | grep Strict-Transport-Security`.
+
+Resumen
+-------
+• El perfil moderno es consistente con guías actuales; con HSTS/headers y vigilancia de stapling/tickets, queda sólido.
+• El perfil inseguro requiere desactivar protocolos/suites legacy, compresión, activar stapling y revisar tickets/HSTS.
+• Validar continuamente con testssl.sh/sslscan y CI evita regresiones y asegura conformidad sostenida.
