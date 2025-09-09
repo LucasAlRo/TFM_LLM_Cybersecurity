@@ -52,7 +52,7 @@ Ejecución completa de todos los casos:
 python scripts/run_all_metrics.py
 
 📊 Resultados
-Todas las salidas se guardan en responses/<modelo>/casoN_<modelo>_out.txt.
+Todas las salidas se guardan en responses/modelo/casoN_modelo_out.txt.
 
 Las métricas por caso se generan en metrics/casoN_metrics_table.tex.
 
@@ -71,8 +71,7 @@ Ejemplo de métricas capturadas:
 📜 Cita académica
 Si utilizas este repositorio, por favor cita:
 
-java
-Copiar código
+```text
 @misc{alro2025tfm,
   author       = {Lucas Álvarez Rodríguez},
   title        = {Evaluación e implementación de LLMs en el análisis de protocolos criptográficos},
@@ -81,6 +80,7 @@ Copiar código
   note         = {Trabajo de Fin de Máster en Ciberseguridad},
   url          = {https://github.com/LucasAlRo/TFM_LLM_Cybersecurity}
 }
+```
 📧 Contacto
 👤 Lucas Álvarez Rodríguez
 📩 GitHub | LinkedIn
